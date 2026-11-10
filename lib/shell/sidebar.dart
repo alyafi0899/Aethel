@@ -30,12 +30,12 @@ class Sidebar extends StatelessWidget {
         child: Column(
           children: [
             _Brand(onClose: onClose),
-            _FacilityCard(name: data.facilityName),
+            _FacilityCard(name: data.facilityName, roleLabel: ctrl.activeUserRole),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(10, 3, 10, 25),
                 children: [
-                  for (final section in data.navSections) ...[
+                  for (final section in ctrl.navSections) ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(10, 13, 10, 5),
                       child: Text(
@@ -148,8 +148,9 @@ class _Brand extends StatelessWidget {
 }
 
 class _FacilityCard extends StatelessWidget {
-  const _FacilityCard({required this.name});
+  const _FacilityCard({required this.name, required this.roleLabel});
   final String name;
+  final String roleLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +184,7 @@ class _FacilityCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'ACTIVE FACILITY',
+                  roleLabel.toUpperCase(),
                   style: context.sLabel.copyWith(
                     color: const Color(0xFF71859A),
                     fontSize: 8.5,
@@ -203,7 +204,6 @@ class _FacilityCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(AppIcons.chevron, size: 14, color: Color(0xFF71859A)),
         ],
       ),
     );

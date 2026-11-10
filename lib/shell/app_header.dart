@@ -84,31 +84,99 @@ class AppHeader extends StatelessWidget {
             },
           ),
           const SizedBox(width: 12),
-          Container(
-            padding: EdgeInsets.only(left: desktop ? 14 : 0),
-            decoration: BoxDecoration(
-              border: desktop
-                  ? Border(left: BorderSide(color: context.c.border))
-                  : null,
+          PopupMenuButton<String>(
+            tooltip: 'User profile & session settings',
+            color: context.c.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(context.m.radiusSm),
+              side: BorderSide(color: context.c.border),
             ),
-            child: Row(
-              children: [
-                Avatar(data.userInitials, tone: Tone.navy),
-                if (desktop) ...[
-                  const SizedBox(width: 9),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(data.userName, style: context.sStrong),
-                      const SizedBox(height: 2),
-                      Text(data.userRole, style: context.sSmall),
-                    ],
-                  ),
-                  const SizedBox(width: 10),
-                  Icon(AppIcons.chevronDown, size: 16, color: context.c.muted),
+            onSelected: (value) {
+              if (value == 'logout') {
+                ctrl.logout();
+              } else if (value == 'switch_admin') {
+                ctrl.loginAsRole(UserRole.admin);
+              } else if (value == 'switch_nurse') {
+                ctrl.loginAsRole(UserRole.nurse);
+              }
+            },
+            itemBuilder: (ctx) => [
+              PopupMenuItem(
+                enabled: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(ctrl.activeUserName, style: context.sStrong),
+                    const SizedBox(height: 2),
+                    Text(ctrl.activeUserRole, style: context.sSmall),
+                    const Divider(),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: ctrl.currentRole.isAdmin ? 'switch_nurse' : 'switch_admin',
+                child: Row(
+                  children: [
+                    Icon(
+                      ctrl.currentRole.isAdmin
+                          ? AppIcons.nurse
+                          : AppIcons.shield,
+                      size: 16,
+                      color: context.c.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      ctrl.currentRole.isAdmin
+                          ? 'Switch to Nurse View'
+                          : 'Switch to Admin View',
+                      style: context.sBody,
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(AppIcons.alert, size: 16, color: context.c.fg(Tone.red)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Logout',
+                      style: context.sBody.copyWith(
+                        color: context.c.fg(Tone.red),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            child: Container(
+              padding: EdgeInsets.only(left: desktop ? 14 : 0),
+              decoration: BoxDecoration(
+                border: desktop
+                    ? Border(left: BorderSide(color: context.c.border))
+                    : null,
+              ),
+              child: Row(
+                children: [
+                  Avatar(ctrl.activeUserInitials, tone: ctrl.currentRole.isAdmin ? Tone.navy : Tone.teal),
+                  if (desktop) ...[
+                    const SizedBox(width: 9),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(ctrl.activeUserName, style: context.sStrong),
+                        const SizedBox(height: 2),
+                        Text(ctrl.activeUserRole, style: context.sSmall),
+                      ],
+                    ),
+                    const SizedBox(width: 10),
+                    Icon(AppIcons.chevronDown, size: 16, color: context.c.muted),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ],

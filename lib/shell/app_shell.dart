@@ -17,6 +17,7 @@ import '../pages/permissions_page.dart';
 import '../pages/placeholder_page.dart';
 import '../pages/reports_page.dart';
 import '../pages/resources_page.dart';
+import '../pages/login_page.dart';
 import '../pages/services_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/triage_page.dart';
@@ -31,6 +32,10 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = context.watch<AppController>();
+
+    if (!ctrl.isLoggedIn) {
+      return const LoginPage();
+    }
 
     if (ctrl.loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));

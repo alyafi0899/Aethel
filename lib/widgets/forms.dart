@@ -67,6 +67,7 @@ class AppTextField extends StatelessWidget {
     this.maxLines = 1,
     this.hasError = false,
     this.keyboardType,
+    this.obscureText = false,
   });
 
   final TextEditingController? controller;
@@ -75,6 +76,7 @@ class AppTextField extends StatelessWidget {
   final int maxLines;
   final bool hasError;
   final TextInputType? keyboardType;
+  final bool obscureText;
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +89,7 @@ class AppTextField extends StatelessWidget {
       controller: controller,
       onChanged: onChanged,
       maxLines: maxLines,
+      obscureText: obscureText,
       keyboardType: keyboardType,
       style: context.sStrong.copyWith(fontWeight: FontWeight.w400),
       decoration: InputDecoration(

@@ -2,6 +2,48 @@ import 'package:flutter/material.dart';
 
 import '../core/theme/clinic_colors.dart';
 
+enum UserRole {
+  admin('Clinic Administrator', 'Full administrative & operational access', 'EC', Tone.blue),
+  nurse('Charge Nurse', 'Clinical triage, patient care & operations access', 'RN', Tone.teal);
+
+  const UserRole(this.label, this.description, this.defaultInitials, this.tone);
+  final String label;
+  final String description;
+  final String defaultInitials;
+  final Tone tone;
+
+  bool get isAdmin => this == UserRole.admin;
+  bool get isNurse => this == UserRole.nurse;
+}
+
+class UserProfile {
+  const UserProfile({
+    required this.name,
+    required this.email,
+    required this.role,
+    required this.initials,
+  });
+
+  final String name;
+  final String email;
+  final UserRole role;
+  final String initials;
+
+  factory UserProfile.admin() => const UserProfile(
+        name: 'Elena Cruz',
+        email: 'admin@prometheon.health',
+        role: UserRole.admin,
+        initials: 'EC',
+      );
+
+  factory UserProfile.nurse() => const UserProfile(
+        name: 'Nurse Olivia Park',
+        email: 'nurse.park@prometheon.health',
+        role: UserRole.nurse,
+        initials: 'OP',
+      );
+}
+
 /// Every page of the app. Add a value here + a case in `AppShell` to add a page.
 enum AppPage {
   dashboard('Dashboard', Icons.grid_view_rounded),
