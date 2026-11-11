@@ -30,7 +30,8 @@ class Sidebar extends StatelessWidget {
         child: Column(
           children: [
             _Brand(onClose: onClose),
-            _FacilityCard(name: data.facilityName, roleLabel: ctrl.activeUserRole),
+            _FacilityCard(
+                name: data.facilityName, roleLabel: ctrl.activeUserRole),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(10, 3, 10, 25),
@@ -83,16 +84,16 @@ class _Brand extends StatelessWidget {
     final blue = ClinicColors.lighten(c.primary, .18);
 
     Widget bar(double w, double h, Color color) => Transform.rotate(
-      angle: math.pi / 4,
-      child: Container(
-        width: w,
-        height: h,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(5),
-        ),
-      ),
-    );
+          angle: math.pi / 4,
+          child: Container(
+            width: w,
+            height: h,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(5),
+            ),
+          ),
+        );
 
     return Container(
       height: 72,

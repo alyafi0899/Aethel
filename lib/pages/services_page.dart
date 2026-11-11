@@ -30,7 +30,8 @@ class ServicesPage extends StatelessWidget {
       children: [
         const PageHead(
           title: 'Service catalog',
-          desc: 'Manage operational requirements, pricing, availability, and marketplace publishing.',
+          desc:
+              'Manage operational requirements, pricing, availability, and marketplace publishing.',
           actions: [
             AppButton(
               'Add service',

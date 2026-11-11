@@ -1,65 +1,114 @@
-# Prometheon Clinic OS — versi Flutter
+# Prometheon Clinic OS — Production Flutter + Supabase Application
 
-Port Flutter dari desain **Clinic Operations Platform** (Figma Make, React + Tailwind).
-Semua 15 halaman, drawer, modal, dan interaksi dari desain sudah ada.
+Prometheon Clinic OS is a full-featured, production-ready Flutter healthcare operations and clinical management application powered by Supabase.
 
-## Menjalankan
+---
 
+## 🌟 Key Features
+
+- **Role-Based Access Control (RBAC)**: Dedicated workflows and views for **Admin** (full administrative, financial, and facility control) and **Nurse / Perawat** (clinical triage, vital signs, patient care, room management).
+- **Live Supabase Database Persistence**: Real-time integration with Postgres database tables (`appointments`, `screening_sessions`, `patients`, `doctors`, `rooms`, `invoices`, `notifications`, `audit_logs`).
+- **Row Level Security (RLS)**: Enforced data safety using indexed SECURITY DEFINER helpers (`auth_role()`, `auth_facility_id()`, `has_permission()`).
+- **Append-Only Audit Trail**: Immutable logging of operational actions across all clinical and administrative workflows.
+- **Administrative User Management**: Server-side user creation via Supabase Edge Function (`admin-create-user`).
+
+---
+
+## 🚀 Quick Start & Running Locally
+
+### 1. Prerequisites
+- Flutter SDK 3.22+ installed
+- Supabase CLI installed (for local database migrations)
+
+### 2. Configure Environment
+Copy `env.example.json` to `env.json`:
 ```bash
-flutter create . --platforms=web,android,ios,windows,macos   # sekali saja, membuat folder platform
+cp env.example.json env.json
+```
+Edit `env.json` with your Supabase credentials:
+```json
+{
+  "SUPABASE_URL": "https://qshmccjazkupvbelyjhi.supabase.co",
+  "SUPABASE_ANON_KEY": "sb_publishable_0FJxIsGzTDi8AeIj42utSQ_IPEKBWkZ",
+  "USE_MOCK": false,
+  "DEFAULT_LOCALE": "id_ID",
+  "DEFAULT_CURRENCY": "IDR",
+  "DEFAULT_TIMEZONE": "Asia/Jakarta"
+}
+```
+
+### 3. Run Application
+```bash
 flutter pub get
-flutter run -d chrome        # atau device lain
-flutter test
+flutter run --dart-define-from-file=env.json
 ```
 
-## Mengatur theme (cukup satu file)
+---
 
-`lib/core/theme/theme_config.dart`
+## 🗄️ Supabase Database Setup & Migrations
 
-| Yang ingin diubah | Di mana |
-|---|---|
-| Warna brand (primary, accent, sidebar) | `BrandPalettes` — edit atau tambah palette |
-| Tema awal (palette, light/dark, radius, density, font, ukuran font) | `kInitialThemeConfig` di bawah file |
-| Warna status badge (hijau/amber/merah…) | `ClinicColors.from(...)` di `clinic_colors.dart` |
-| Kata kunci status → warna badge | fungsi `badgeTone()` di `data/models.dart` |
-| Set ikon | `lib/core/icons.dart` |
-
-Saat aplikasi berjalan, semua pengaturan itu juga bisa diubah langsung dari menu **Settings → Appearance**
-(palette, mode light/dark/system, radius sudut, density, ukuran font, jenis font).
-Dari kode: `context.read<ThemeController>().setPalette(BrandPalettes.emerald)`.
-
-Di widget, ambil token dengan `context.c.primary`, `context.m.radius`, `context.sH1`, dst. (`core/theme/context_ext.dart`).
-
-## Data point
-
-Semua data contoh ada di **`lib/data/mock_data.dart`** — pasien, janji temu, dokter, ruangan, invoice,
-notifikasi, angka dashboard, KPI, dll. Ubah angkanya di sana, UI ikut berubah.
-
-Untuk memakai backend sungguhan: buat class yang `implements ClinicRepository`
-(`lib/data/clinic_repository.dart`), kembalikan `ClinicData`, lalu ganti `MockClinicRepository()` di `main.dart`.
-
-## Struktur
-
-```
-lib/
-  main.dart, app.dart
-  core/            icons, responsive, theme/ (config, colors, metrics, controller)
-  data/            models, mock_data, clinic_repository
-  state/           AppController (halaman aktif, daftar appointment, pencarian)
-  widgets/         AppCard, StatusBadge, DataGrid, AppButton, form, toast, side panel
-  shell/           sidebar, header, app_shell (responsif: sidebar tetap >= 850px, drawer di bawahnya)
-  pages/           dashboard, appointments, triage, doctors, resources, notifications, finance,
-                   reports, patients, services, consultations, marketplace, permissions, settings
-  sheets/          drawer appointment, panel review klinis, dialog darurat, form appointment 2 langkah,
-                   form notifikasi, quick action
+### 1. Link to Supabase Project
+```bash
+supabase link --project-ref qshmccjazkupvbelyjhi
 ```
 
-## Catatan terhadap desain asli
+### 2. Apply Migrations
+Run database migrations sequentially:
+```bash
+supabase db push
+```
+Or execute the following migration files in Order:
+1. `supabase/migrations/01_schema.sql` (Tables, Enums, Triggers, Views)
+2. `supabase/migrations/02_security_rls.sql` (Row Level Security & Policies)
+3. `supabase/migrations/03_rpcs.sql` (Atomic Stored Procedures & Logic)
 
-- Ukuran font default sedikit lebih besar dari mock-up web (yang memakai 8–11 px). Untuk tampilan lebih padat,
-  set `fontScale: 0.9`.
-- Ikon memakai Material Icons (padanan terdekat dari set SVG di desain).
-- Halaman **Settings** di desain hanya placeholder; di sini diisi editor theme.
-- Halaman Clinical Workflow, Nurses & Staff, Facility Membership, Scheduling, dan Ratings & Reviews juga
-  placeholder di desain asli, jadi tetap placeholder.
-- Pengaturan theme belum disimpan permanen. Tambahkan `shared_preferences` di `ThemeController` bila perlu.
+### 3. Seed Development Data (Optional)
+```bash
+supabase db execute --file supabase/seed.sql
+```
+
+### 4. Deploy Edge Functions
+```bash
+supabase functions deploy admin-create-user --no-verify-jwt
+supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+```
+
+---
+
+## 🔑 Initial Admin Account Bootstrap Instructions
+
+1. Log in to the [Supabase Dashboard](https://supabase.com/dashboard).
+2. Go to **Authentication -> Users** and click **Add User -> Create User**.
+3. Create a user with email `admin@prometheon.health` and password.
+4. Run the following SQL query in the **SQL Editor** to grant Administrator role:
+```sql
+INSERT INTO profiles (id, facility_id, full_name, role, is_active)
+VALUES (
+  'YOUR_USER_UUID',
+  'a0000000-0000-0000-0000-000000000001',
+  'Elena Cruz',
+  'admin',
+  TRUE
+) ON CONFLICT (id) DO UPDATE SET role = 'admin';
+```
+
+---
+
+## 🔒 Recommended Auth Settings in Supabase Dashboard
+
+To ensure production security compliance:
+1. Disable Public Sign-ups (**Authentication -> Settings -> Disable Allow new users to sign up**).
+2. Enable Email Confirmation (**Authentication -> Settings -> Enable Confirm email**).
+3. Set minimum password length to 10 characters.
+4. Enable Leaked Password Protection.
+
+---
+
+## 🧪 Testing & Code Quality
+
+Run code formatting, linter analysis, and automated test suite:
+```bash
+dart format .
+flutter analyze
+flutter test test/widget_test.dart test/auth_role_test.dart
+```

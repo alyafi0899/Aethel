@@ -15,23 +15,22 @@ abstract final class AppTheme {
     );
     final textTheme = _textTheme(cfg, colors);
 
-    final scheme =
-        ColorScheme.fromSeed(
-          seedColor: cfg.palette.primary,
-          brightness: brightness,
-        ).copyWith(
-          primary: colors.primary,
-          onPrimary: colors.onPrimary,
-          surface: colors.surface,
-          onSurface: colors.text,
-          outline: colors.border,
-          error: colors.fg(Tone.red),
-        );
+    final scheme = ColorScheme.fromSeed(
+      seedColor: cfg.palette.primary,
+      brightness: brightness,
+    ).copyWith(
+      primary: colors.primary,
+      onPrimary: colors.onPrimary,
+      surface: colors.surface,
+      onSurface: colors.text,
+      outline: colors.border,
+      error: colors.fg(Tone.red),
+    );
 
     OutlineInputBorder border(Color color) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(metrics.radiusSm),
-      borderSide: BorderSide(color: color),
-    );
+          borderRadius: BorderRadius.circular(metrics.radiusSm),
+          borderSide: BorderSide(color: color),
+        );
 
     return ThemeData(
       useMaterial3: true,

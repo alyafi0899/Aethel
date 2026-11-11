@@ -45,7 +45,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
       children: [
         PageHead(
           title: 'Notification center',
-          desc: 'Create, monitor, and audit event-driven operational communications.',
+          desc:
+              'Create, monitor, and audit event-driven operational communications.',
           actions: [
             const AppButton('Templates', icon: AppIcons.service),
             AppButton(
@@ -168,11 +169,11 @@ class _LifecycleStrip extends StatelessWidget {
     }
 
     Widget sep() => Container(
-      width: 22,
-      height: 1,
-      margin: const EdgeInsets.symmetric(horizontal: 6),
-      color: c.border,
-    );
+          width: 22,
+          height: 1,
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          color: c.border,
+        );
 
     return Container(
       height: 45,

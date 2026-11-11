@@ -17,21 +17,21 @@ class QuickActionDialog extends StatelessWidget {
   final BuildContext parentContext;
 
   static Future<void> show(BuildContext context) => showDialog<void>(
-    context: context,
-    builder: (_) => QuickActionDialog(parentContext: context),
-  );
+        context: context,
+        builder: (_) => QuickActionDialog(parentContext: context),
+      );
 
   @override
   Widget build(BuildContext context) {
     final root = parentContext;
 
     Widget tile(
-        IconData icon,
-        Tone tone,
-        String title,
-        String sub,
-        VoidCallback onTap,
-        ) {
+      IconData icon,
+      Tone tone,
+      String title,
+      String sub,
+      VoidCallback onTap,
+    ) {
       return Material(
         color: context.c.surface,
         shape: RoundedRectangleBorder(
@@ -85,7 +85,7 @@ class QuickActionDialog extends StatelessWidget {
                 Tone.blue,
                 'New appointment',
                 'Create a booking and validate availability',
-                    () => chain(() => AppointmentFormDialog.show(root)),
+                () => chain(() => AppointmentFormDialog.show(root)),
               ),
               const SizedBox(height: 10),
               tile(
@@ -93,7 +93,7 @@ class QuickActionDialog extends StatelessWidget {
                 Tone.teal,
                 'Send notification',
                 'Notify doctors or facility staff',
-                    () => chain(() => NotificationFormDialog.show(root)),
+                () => chain(() => NotificationFormDialog.show(root)),
               ),
               const SizedBox(height: 10),
               tile(
@@ -101,8 +101,9 @@ class QuickActionDialog extends StatelessWidget {
                 Tone.violet,
                 'Register patient',
                 'Create a local facility registration',
-                    () => chain(
-                      () => Toast.show(root, 'Patient registration workflow opened.'),
+                () => chain(
+                  () =>
+                      Toast.show(root, 'Patient registration workflow opened.'),
                 ),
               ),
               const SizedBox(height: 10),
@@ -111,7 +112,7 @@ class QuickActionDialog extends StatelessWidget {
                 Tone.amber,
                 'Create invoice',
                 'Bill a service or appointment',
-                    () => chain(() => Toast.show(root, 'Invoice builder opened.')),
+                () => chain(() => Toast.show(root, 'Invoice builder opened.')),
               ),
             ],
           ),

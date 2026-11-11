@@ -31,18 +31,18 @@ class SettingsPage extends StatelessWidget {
     final c = context.c;
 
     Widget group(String title, String hint, Widget child) => Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: context.sH3),
-          const SizedBox(height: 2),
-          Text(hint, style: context.sSmall),
-          const SizedBox(height: 10),
-          child,
-        ],
-      ),
-    );
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: context.sH3),
+              const SizedBox(height: 2),
+              Text(hint, style: context.sSmall),
+              const SizedBox(height: 10),
+              child,
+            ],
+          ),
+        );
 
     Widget slider(
       double value,
@@ -51,28 +51,29 @@ class SettingsPage extends StatelessWidget {
       int divisions,
       ValueChanged<double> onChanged,
       String label,
-    ) => Row(
-      children: [
-        Expanded(
-          child: Slider(
-            value: value,
-            min: min,
-            max: max,
-            divisions: divisions,
-            activeColor: c.primary,
-            onChanged: onChanged,
-          ),
-        ),
-        SizedBox(
-          width: 48,
-          child: Text(
-            label,
-            style: context.sStrong,
-            textAlign: TextAlign.right,
-          ),
-        ),
-      ],
-    );
+    ) =>
+        Row(
+          children: [
+            Expanded(
+              child: Slider(
+                value: value,
+                min: min,
+                max: max,
+                divisions: divisions,
+                activeColor: c.primary,
+                onChanged: onChanged,
+              ),
+            ),
+            SizedBox(
+              width: 48,
+              child: Text(
+                label,
+                style: context.sStrong,
+                textAlign: TextAlign.right,
+              ),
+            ),
+          ],
+        );
 
     final editor = AppCard(
       padding: const EdgeInsets.all(20),
@@ -210,10 +211,10 @@ class SettingsPage extends StatelessWidget {
         children: [
           Text('Live preview', style: context.sH2),
           const SizedBox(height: 14),
-          Wrap(
+          const Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: const [
+            children: [
               AppButton('Primary', kind: BtnKind.primary),
               AppButton('Secondary'),
               AppButton('Danger', kind: BtnKind.danger),
@@ -232,8 +233,8 @@ class SettingsPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Row(
-            children: const [
+          const Row(
+            children: [
               IconBox(AppIcons.calendar, tone: Tone.blue),
               SizedBox(width: 8),
               IconBox(AppIcons.clock, tone: Tone.teal),
@@ -256,7 +257,8 @@ class SettingsPage extends StatelessWidget {
       children: [
         const PageHead(
           title: 'Appearance',
-          desc: 'Customise the look of the whole workspace. Changes apply instantly.',
+          desc:
+              'Customise the look of the whole workspace. Changes apply instantly.',
         ),
         SplitLayout(
           leftFlex: 3,

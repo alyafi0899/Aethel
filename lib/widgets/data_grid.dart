@@ -109,7 +109,8 @@ class DataGrid extends StatelessWidget {
 
 /// Bold title with a muted sub-line.
 class TwoLine extends StatelessWidget {
-  const TwoLine(this.title, [this.subtitle, this.titleColor]);
+  const TwoLine(this.title, [this.subtitle, this.titleColor, Key? key])
+      : super(key: key);
 
   final String title;
   final String? subtitle;
@@ -175,9 +176,9 @@ class CellText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-    text,
-    maxLines: 2,
-    overflow: TextOverflow.ellipsis,
-    style: context.sBody,
-  );
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: context.sBody,
+      );
 }

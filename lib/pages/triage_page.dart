@@ -5,7 +5,6 @@ import '../core/icons.dart';
 import '../core/responsive.dart';
 import '../core/theme/clinic_colors.dart';
 import '../core/theme/context_ext.dart';
-import '../data/models.dart';
 import '../sheets/clinical_review_panel.dart';
 import '../state/app_controller.dart';
 import '../widgets/buttons.dart';
@@ -53,7 +52,8 @@ class _TriagePageState extends State<TriagePage> {
       children: [
         const PageHead(
           title: 'Triage & screening',
-          desc: 'Review pre-consultation intake, identify red flags, and route patients to authorized clinical personnel.',
+          desc:
+              'Review pre-consultation intake, identify red flags, and route patients to authorized clinical personnel.',
           actions: [
             AppButton('Export queue', icon: AppIcons.download),
             AppButton(
@@ -65,7 +65,8 @@ class _TriagePageState extends State<TriagePage> {
         ),
         const NoticeBanner(
           title: 'Clinical safety boundary',
-          message: 'Screening supports structured review; it does not diagnose. Red-flag symptoms must be escalated to authorized clinical personnel and kept out of routine queues.',
+          message:
+              'Screening supports structured review; it does not diagnose. Red-flag symptoms must be escalated to authorized clinical personnel and kept out of routine queues.',
           actionLabel: 'View escalation protocol',
         ),
         const SizedBox(height: 12),
@@ -133,7 +134,8 @@ class _TriagePageState extends State<TriagePage> {
                 empty: EmptyState(
                   icon: AppIcons.check,
                   title: 'No records in $_tab',
-                  message: 'There are no screening records matching the current filters.',
+                  message:
+                      'There are no screening records matching the current filters.',
                 ),
                 rows: [
                   for (final s in visible)
@@ -229,9 +231,8 @@ class _Completion extends StatelessWidget {
               value: value / 100,
               minHeight: 5,
               backgroundColor: context.c.border,
-              color: value >= 100
-                  ? context.c.fg(Tone.green)
-                  : context.c.primary,
+              color:
+                  value >= 100 ? context.c.fg(Tone.green) : context.c.primary,
             ),
           ),
         ),

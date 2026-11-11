@@ -76,12 +76,14 @@ class SupabaseClinicRepository implements ClinicRepository {
         profile: baseSnapshot.profile,
       );
     } catch (e) {
-      debugPrint('SupabaseClinicRepository: using fallback baseline data due to: $e');
+      debugPrint(
+          'SupabaseClinicRepository: using fallback baseline data due to: $e');
       return baseSnapshot;
     }
   }
 
-  Future<List<Appointment>> _fetchAppointments(List<Appointment> fallback) async {
+  Future<List<Appointment>> _fetchAppointments(
+      List<Appointment> fallback) async {
     try {
       final response = await _client!.from('appointments').select();
       if (response.isEmpty) return fallback;
@@ -154,7 +156,8 @@ class SupabaseClinicRepository implements ClinicRepository {
     }
   }
 
-  Future<List<PatientRecord>> _fetchPatients(List<PatientRecord> fallback) async {
+  Future<List<PatientRecord>> _fetchPatients(
+      List<PatientRecord> fallback) async {
     try {
       final response = await _client!.from('patients').select();
       if (response.isEmpty) return fallback;

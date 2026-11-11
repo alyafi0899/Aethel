@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/theme/clinic_colors.dart';
+
 /// Every icon used by the app lives here. To swap icon style (outlined ->
 /// rounded, Material -> Phosphor, ...) change this single file.
 abstract final class AppIcons {

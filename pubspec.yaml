@@ -12,6 +12,11 @@ dependencies:
   provider: ^6.1.2
   google_fonts: ^6.2.1
   supabase_flutter: ^2.18.3
+  file_picker: ^13.3.3
+  geolocator: ^14.1.2
+  intl: ^0.20.3
+  url_launcher: ^6.3.3
+  uuid: ^4.6.0
 
 dev_dependencies:
   flutter_test:

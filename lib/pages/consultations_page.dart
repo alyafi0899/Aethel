@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../core/icons.dart';
 import '../core/responsive.dart';
-import '../core/theme/context_ext.dart';
 import '../state/app_controller.dart';
 import '../widgets/buttons.dart';
 import '../widgets/common.dart';
@@ -20,7 +19,8 @@ class ConsultationsPage extends StatelessWidget {
       children: [
         const PageHead(
           title: 'Consultation operations',
-          desc: 'Operational visibility for in-person and online sessions without exposing private clinical content.',
+          desc:
+              'Operational visibility for in-person and online sessions without exposing private clinical content.',
           actions: [AppButton('Filter queue', icon: AppIcons.filter)],
         ),
         AdaptiveGrid(
@@ -60,7 +60,8 @@ class ConsultationsPage extends StatelessWidget {
         const NoticeBanner(
           icon: AppIcons.lock,
           title: 'Content privacy boundary',
-          message: 'Clinic operations staff can see session status and routing metadata, but not confidential messages or clinical notes.',
+          message:
+              'Clinic operations staff can see session status and routing metadata, but not confidential messages or clinical notes.',
         ),
       ],
     );

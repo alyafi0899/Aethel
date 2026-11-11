@@ -17,10 +17,10 @@ class ClinicalReviewPanel extends StatefulWidget {
   final Screening screening;
 
   static Future<void> show(BuildContext context, Screening s) => showSidePanel(
-    context,
-    width: 620,
-    builder: (_) => ClinicalReviewPanel(screening: s),
-  );
+        context,
+        width: 620,
+        builder: (_) => ClinicalReviewPanel(screening: s),
+      );
 
   @override
   State<ClinicalReviewPanel> createState() => _ClinicalReviewPanelState();
@@ -102,9 +102,8 @@ class _ClinicalReviewPanelState extends State<ClinicalReviewPanel> {
                                 Text(
                                   'Chest pain with associated shortness of breath requires immediate clinical escalation.',
                                   style: context.sSmall.copyWith(
-                                    color: c
-                                        .fg(Tone.red)
-                                        .withValues(alpha: .85),
+                                    color:
+                                        c.fg(Tone.red).withValues(alpha: .85),
                                   ),
                                 ),
                               ],
@@ -442,7 +441,8 @@ class _ClinicalReviewPanelState extends State<ClinicalReviewPanel> {
         ),
         const NoticeBanner(
           title: 'Clinical assessment permission required',
-          message: 'Only Doctor, Nurse, or authorized Clinical Reviewer roles can record triage priority, disposition, or clinical assessment. Receptionists may add attributed patient-reported facts only.',
+          message:
+              'Only Doctor, Nurse, or authorized Clinical Reviewer roles can record triage priority, disposition, or clinical assessment. Receptionists may add attributed patient-reported facts only.',
         ),
       ],
     );
@@ -680,10 +680,10 @@ class _ClinicalReviewPanelState extends State<ClinicalReviewPanel> {
       ),
     ];
     TextStyle mono() => context.sSmall.copyWith(
-      fontFamily: 'monospace',
-      fontSize: 10,
-      color: context.c.textSecondary,
-    );
+          fontFamily: 'monospace',
+          fontSize: 10,
+          color: context.c.textSecondary,
+        );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -731,7 +731,8 @@ class _ClinicalReviewPanelState extends State<ClinicalReviewPanel> {
         const NoticeBanner(
           icon: AppIcons.lock,
           title: 'Expected output',
-          message: 'Every mutation returns the updated screening status, server timestamp, actor profile, linked appointment and encounter IDs, notification delivery records when applicable, and an immutable audit event.',
+          message:
+              'Every mutation returns the updated screening status, server timestamp, actor profile, linked appointment and encounter IDs, notification delivery records when applicable, and an immutable audit event.',
         ),
       ],
     );

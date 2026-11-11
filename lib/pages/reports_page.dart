@@ -20,7 +20,8 @@ class ReportsPage extends StatelessWidget {
       children: [
         const PageHead(
           title: 'Reports & analytics',
-          desc: 'Operational performance across appointments, resources, services, and communications.',
+          desc:
+              'Operational performance across appointments, resources, services, and communications.',
           actions: [
             AppButton('CSV', icon: AppIcons.download),
             AppButton(
@@ -57,29 +58,29 @@ class _ChartCard extends StatelessWidget {
     const axis = ['120', '90', '60', '30', '0'];
 
     Widget bar(double pct, Color color, double h) => Container(
-      width: 9,
-      height: h * pct / 100,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
-      ),
-    );
+          width: 9,
+          height: h * pct / 100,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+          ),
+        );
 
     Widget legend(Color color, String label) => Padding(
-      padding: const EdgeInsets.only(right: 16),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          padding: const EdgeInsets.only(right: 16),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 6),
+              Text(label, style: context.sSmall),
+            ],
           ),
-          const SizedBox(width: 6),
-          Text(label, style: context.sSmall),
-        ],
-      ),
-    );
+        );
 
     return AppCard(
       padding: const EdgeInsets.all(17),

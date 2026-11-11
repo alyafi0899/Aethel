@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/icons.dart';
-import '../core/responsive.dart';
 import '../core/theme/clinic_colors.dart';
 import '../core/theme/context_ext.dart';
 import '../data/models.dart';
 import '../state/app_controller.dart';
 import '../widgets/buttons.dart';
 import '../widgets/common.dart';
-import '../widgets/forms.dart';
 import '../widgets/toast.dart';
 
 class DoctorsPage extends StatefulWidget {
@@ -34,7 +32,8 @@ class _DoctorsPageState extends State<DoctorsPage> {
       children: [
         const PageHead(
           title: 'Doctors',
-          desc: 'Manage affiliations, credentials, schedules, and operational availability.',
+          desc:
+              'Manage affiliations, credentials, schedules, and operational availability.',
           actions: [
             AppButton('Notify doctors', icon: AppIcons.send),
             AppButton(
@@ -181,26 +180,27 @@ class _DoctorDetail extends StatelessWidget {
       String value,
       String sub, {
       bool last = false,
-    }) => Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border(
-            right: BorderSide(color: last ? Colors.transparent : c.border),
+    }) =>
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border(
+                right: BorderSide(color: last ? Colors.transparent : c.border),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: context.sLabel),
+                const SizedBox(height: 5),
+                Text(value, style: context.sH2),
+                const SizedBox(height: 2),
+                Text(sub, style: context.sSmall),
+              ],
+            ),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: context.sLabel),
-            const SizedBox(height: 5),
-            Text(value, style: context.sH2),
-            const SizedBox(height: 2),
-            Text(sub, style: context.sSmall),
-          ],
-        ),
-      ),
-    );
+        );
 
     return AppCard(
       child: Column(
@@ -381,7 +381,8 @@ class _DoctorDetail extends StatelessWidget {
               icon: AppIcons.lock,
               tone: Tone.gray,
               title: 'Clinical privacy enforced',
-              message: 'Administrative access does not include confidential consultation notes or conversations.',
+              message:
+                  'Administrative access does not include confidential consultation notes or conversations.',
             ),
           ),
         ],

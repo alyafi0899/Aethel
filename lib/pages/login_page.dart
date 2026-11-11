@@ -201,9 +201,12 @@ class _LoginPageState extends State<LoginPage> {
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: c.soft(_selectedRole.tone),
-                            borderRadius: BorderRadius.circular(context.m.radiusSm),
+                            borderRadius:
+                                BorderRadius.circular(context.m.radiusSm),
                             border: Border.all(
-                              color: c.fg(_selectedRole.tone).withValues(alpha: 0.3),
+                              color: c
+                                  .fg(_selectedRole.tone)
+                                  .withValues(alpha: 0.3),
                             ),
                           ),
                           child: Row(
@@ -236,7 +239,8 @@ class _LoginPageState extends State<LoginPage> {
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: c.surface,
-                            borderRadius: BorderRadius.circular(context.m.radiusSm),
+                            borderRadius:
+                                BorderRadius.circular(context.m.radiusSm),
                             border: Border.all(color: c.border),
                           ),
                           child: Column(
@@ -282,7 +286,8 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             const Expanded(child: Divider()),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
                               child: Text(
                                 'OR SUPABASE AUTH',
                                 style: context.sSmall.copyWith(fontSize: 10),
@@ -299,11 +304,13 @@ class _LoginPageState extends State<LoginPage> {
                             margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
                               color: c.soft(Tone.red),
-                              borderRadius: BorderRadius.circular(context.m.radiusSm),
+                              borderRadius:
+                                  BorderRadius.circular(context.m.radiusSm),
                             ),
                             child: Row(
                               children: [
-                                Icon(AppIcons.alert, size: 16, color: c.fg(Tone.red)),
+                                Icon(AppIcons.alert,
+                                    size: 16, color: c.fg(Tone.red)),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(

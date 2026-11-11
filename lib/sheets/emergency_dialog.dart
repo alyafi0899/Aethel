@@ -136,12 +136,12 @@ class EmergencyDialog extends StatelessWidget {
                         ),
                       ),
                     const SizedBox(height: 12),
-                    InlineNote(
+                    const InlineNote(
                       icon: AppIcons.shield,
                       tone: Tone.gray,
                       title: 'No diagnosis',
                       message:
-                      'This alert identifies reported red-flag symptoms only. It does not provide a diagnosis and must not be used to dismiss or downgrade emergency symptoms.',
+                          'This alert identifies reported red-flag symptoms only. It does not provide a diagnosis and must not be used to dismiss or downgrade emergency symptoms.',
                     ),
                     const SizedBox(height: 14),
                     FormField2(
@@ -149,7 +149,7 @@ class EmergencyDialog extends StatelessWidget {
                       child: AppTextField(
                         controller: TextEditingController(
                           text:
-                          'Central chest pressure with radiation, shortness of breath, sweating, and severity 8/10. Immediate clinical assessment requested.',
+                              'Central chest pressure with radiation, shortness of breath, sweating, and severity 8/10. Immediate clinical assessment requested.',
                         ),
                         maxLines: 3,
                       ),

@@ -11,9 +11,9 @@ class NotificationFormDialog extends StatefulWidget {
   const NotificationFormDialog({super.key});
 
   static Future<void> show(BuildContext context) => showDialog<void>(
-    context: context,
-    builder: (_) => const NotificationFormDialog(),
-  );
+        context: context,
+        builder: (_) => const NotificationFormDialog(),
+      );
 
   @override
   State<NotificationFormDialog> createState() => _NotificationFormDialogState();
@@ -77,7 +77,8 @@ class _NotificationFormDialogState extends State<NotificationFormDialog> {
               'Message body',
               required: true,
               child: AppTextField(
-                hint: 'Describe the update and any action recipients should take.',
+                hint:
+                    'Describe the update and any action recipients should take.',
                 maxLines: 3,
               ),
             ),

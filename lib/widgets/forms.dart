@@ -82,9 +82,9 @@ class AppTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     final red = context.c.fg(Tone.red);
     OutlineInputBorder b(Color col) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(context.m.radiusSm),
-      borderSide: BorderSide(color: col),
-    );
+          borderRadius: BorderRadius.circular(context.m.radiusSm),
+          borderSide: BorderSide(color: col),
+        );
     return TextField(
       controller: controller,
       onChanged: onChanged,
@@ -163,9 +163,9 @@ class FieldRow extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, bc) {
         final n = (bc.maxWidth / minChildWidth).floor().clamp(
-          1,
-          children.length,
-        );
+              1,
+              children.length,
+            );
         final rows = <Widget>[];
         for (var i = 0; i < children.length; i += n) {
           final slice = children.skip(i).take(n).toList();

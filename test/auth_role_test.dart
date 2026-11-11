@@ -55,7 +55,8 @@ void main() {
   });
 
   group('SupabaseClinicRepository Tests', () {
-    test('SupabaseClinicRepository loads snapshot baseline without crashing', () async {
+    test('SupabaseClinicRepository loads snapshot baseline without crashing',
+        () async {
       final repo = SupabaseClinicRepository();
       final data = await repo.load();
 

@@ -7,7 +7,6 @@ import '../core/theme/context_ext.dart';
 import '../state/app_controller.dart';
 import '../widgets/buttons.dart';
 import '../widgets/common.dart';
-import '../widgets/forms.dart';
 
 class PermissionsPage extends StatefulWidget {
   const PermissionsPage({super.key});
@@ -99,7 +98,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
             child: CardHead(
               title: role.name,
               subtitle:
-              'Operational administration without confidential clinical access',
+                  'Operational administration without confidential clinical access',
               trailing: const AppButton(
                 'Edit role',
                 icon: AppIcons.edit,
@@ -154,7 +153,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                                       child: Checkbox(
                                         value: _matrix[i][j],
                                         onChanged: (v) => setState(
-                                              () => _matrix[i][j] = v ?? false,
+                                          () => _matrix[i][j] = v ?? false,
                                         ),
                                       ),
                                     ),
@@ -181,7 +180,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
         const PageHead(
           title: 'Roles & permissions',
           desc:
-          'Configure facility access boundaries. Backend row-level policies remain authoritative.',
+              'Configure facility access boundaries. Backend row-level policies remain authoritative.',
           actions: [
             AppButton(
               'Create custom role',
@@ -210,7 +209,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
         const NoticeBanner(
           title: 'Defense in depth',
           message:
-          'Hidden UI actions improve usability, but authorization must be enforced through Supabase RLS, RPC permission checks, and audited Edge Functions.',
+              'Hidden UI actions improve usability, but authorization must be enforced through Supabase RLS, RPC permission checks, and audited Edge Functions.',
         ),
       ],
     );

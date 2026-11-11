@@ -16,9 +16,9 @@ class AppointmentFormDialog extends StatefulWidget {
   const AppointmentFormDialog({super.key});
 
   static Future<void> show(BuildContext context) => showDialog<void>(
-    context: context,
-    builder: (_) => const AppointmentFormDialog(),
-  );
+        context: context,
+        builder: (_) => const AppointmentFormDialog(),
+      );
 
   @override
   State<AppointmentFormDialog> createState() => _AppointmentFormDialogState();
@@ -76,9 +76,9 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
       return;
     }
     final msg = context.read<AppController>().createAppointment(
-      patient: _patient!,
-      doctor: _doctor,
-    );
+          patient: _patient!,
+          doctor: _doctor,
+        );
     Toast.show(context, msg);
     Navigator.of(context).pop();
   }
@@ -146,7 +146,8 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
 
     return ModalShell(
       title: 'Create appointment',
-      subtitle: 'Appointment and linked clinical intake are created together without duplicate entry.',
+      subtitle:
+          'Appointment and linked clinical intake are created together without duplicate entry.',
       onClose: () => Navigator.of(context).pop(),
       children: [
         Padding(
@@ -244,7 +245,8 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
           ),
           const InlineNote(
             title: 'Slot available',
-            message: 'Service, doctor, and resource availability checked. No conflicts found.',
+            message:
+                'Service, doctor, and resource availability checked. No conflicts found.',
           ),
         ],
       ),
@@ -407,7 +409,8 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
           FormField2(
             'Additional patient notes',
             child: f(
-              hint: 'Any other information the patient wants the care team to know',
+              hint:
+                  'Any other information the patient wants the care team to know',
               maxLines: 2,
             ),
           ),
@@ -462,15 +465,15 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
   }
 
   Widget _footer(List<Widget> children) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-    decoration: BoxDecoration(
-      border: Border(top: BorderSide(color: context.c.border)),
-    ),
-    child: Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      alignment: WrapAlignment.end,
-      children: children,
-    ),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: context.c.border)),
+        ),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.end,
+          children: children,
+        ),
+      );
 }

@@ -26,7 +26,7 @@ class PlaceholderPage extends StatelessWidget {
             width: double.infinity,
             child: Column(
               children: [
-                IconBox(
+                const IconBox(
                   AppIcons.settings,
                   tone: Tone.blue,
                   size: 62,

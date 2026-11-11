@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/icons.dart';
-import '../core/theme/clinic_colors.dart';
 import '../core/theme/context_ext.dart';
 import '../state/app_controller.dart';
 import '../widgets/buttons.dart';
@@ -32,7 +31,8 @@ class _PatientsPageState extends State<PatientsPage> {
       children: [
         const PageHead(
           title: 'Patient directory',
-          desc: 'Global patient identities with facility-scoped registration and record access.',
+          desc:
+              'Global patient identities with facility-scoped registration and record access.',
           actions: [
             AppButton(
               'Register patient',
@@ -43,7 +43,8 @@ class _PatientsPageState extends State<PatientsPage> {
         ),
         const NoticeBanner(
           title: 'Facility-scoped clinical access',
-          message: 'Records from other facilities remain restricted unless explicit authorization is present.',
+          message:
+              'Records from other facilities remain restricted unless explicit authorization is present.',
           actionLabel: 'Review access policy',
         ),
         const SizedBox(height: 12),

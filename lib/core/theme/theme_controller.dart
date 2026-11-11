@@ -6,7 +6,7 @@ import 'theme_config.dart';
 /// listens and rebuilds the [ThemeData].
 class ThemeController extends ChangeNotifier {
   ThemeController([AppThemeConfig initial = kInitialThemeConfig])
-    : _config = initial;
+      : _config = initial;
 
   AppThemeConfig _config;
   AppThemeConfig get config => _config;

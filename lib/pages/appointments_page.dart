@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../core/icons.dart';
 import '../core/responsive.dart';
-import '../core/theme/clinic_colors.dart';
 import '../core/theme/context_ext.dart';
 import '../data/models.dart';
 import '../sheets/appointment_drawer.dart';
@@ -75,7 +74,8 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
       children: [
         PageHead(
           title: 'Appointment management',
-          desc: 'Manage bookings, check-ins, room allocation, and appointment lifecycle.',
+          desc:
+              'Manage bookings, check-ins, room allocation, and appointment lifecycle.',
           actions: [
             const AppButton('Export', icon: AppIcons.download),
             AppButton(

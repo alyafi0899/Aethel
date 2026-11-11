@@ -43,7 +43,8 @@ class _ResourcesPageState extends State<ResourcesPage> {
       children: [
         const PageHead(
           title: 'Rooms & resources',
-          desc: 'Monitor capacity, resolve conflicts, and coordinate healthcare resource allocation.',
+          desc:
+              'Monitor capacity, resolve conflicts, and coordinate healthcare resource allocation.',
           actions: [
             AppButton('Manage maintenance', icon: AppIcons.settings),
             AppButton(
@@ -147,14 +148,14 @@ class _FloorCard extends StatelessWidget {
     }
 
     Widget rowOf(List<RoomItem> items) => Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < items.length; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
-          tile(items[i]),
-        ],
-      ],
-    );
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              tile(items[i]),
+            ],
+          ],
+        );
 
     return AppCard(
       child: Column(

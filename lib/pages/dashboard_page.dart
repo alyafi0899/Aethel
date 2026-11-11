@@ -110,9 +110,8 @@ class _MetricCard extends StatelessWidget {
               color: m.sub.contains('+')
                   ? context.c.fg(Tone.green)
                   : context.c.muted,
-              fontWeight: m.sub.contains('+')
-                  ? FontWeight.w600
-                  : FontWeight.w400,
+              fontWeight:
+                  m.sub.contains('+') ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
         ],
@@ -311,20 +310,20 @@ class _AvailabilityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.c;
     Widget legend(Color color, String label, int n) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Text(label, style: context.sBody)),
+              Text('$n', style: context.sStrong),
+            ],
           ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(label, style: context.sBody)),
-          Text('$n', style: context.sStrong),
-        ],
-      ),
-    );
+        );
 
     return AppCard(
       padding: const EdgeInsets.all(17),

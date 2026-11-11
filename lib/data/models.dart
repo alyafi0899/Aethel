@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../core/theme/clinic_colors.dart';
 
 enum UserRole {
-  admin('Clinic Administrator', 'Full administrative & operational access', 'EC', Tone.blue),
-  nurse('Charge Nurse', 'Clinical triage, patient care & operations access', 'RN', Tone.teal);
+  admin('Clinic Administrator', 'Full administrative & operational access',
+      'EC', Tone.blue),
+  nurse('Charge Nurse', 'Clinical triage, patient care & operations access',
+      'RN', Tone.teal);
 
   const UserRole(this.label, this.description, this.defaultInitials, this.tone);
   final String label;
@@ -112,18 +114,18 @@ class Appointment {
       status;
 
   Appointment copyWith({String? status}) => Appointment(
-    id: id,
-    patient: patient,
-    initials: initials,
-    doctor: doctor,
-    service: service,
-    time: time,
-    date: date,
-    room: room,
-    source: source,
-    payment: payment,
-    status: status ?? this.status,
-  );
+        id: id,
+        patient: patient,
+        initials: initials,
+        doctor: doctor,
+        service: service,
+        time: time,
+        date: date,
+        room: room,
+        source: source,
+        payment: payment,
+        status: status ?? this.status,
+      );
 }
 
 class Screening {

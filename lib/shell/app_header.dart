@@ -19,7 +19,6 @@ class AppHeader extends StatelessWidget {
     final ctrl = context.watch<AppController>();
     final desktop = Breakpoints.isDesktop(context);
     final width = MediaQuery.sizeOf(context).width;
-    final data = ctrl.data;
 
     return Container(
       height: 72,
@@ -114,7 +113,8 @@ class AppHeader extends StatelessWidget {
                 ),
               ),
               PopupMenuItem(
-                value: ctrl.currentRole.isAdmin ? 'switch_nurse' : 'switch_admin',
+                value:
+                    ctrl.currentRole.isAdmin ? 'switch_nurse' : 'switch_admin',
                 child: Row(
                   children: [
                     Icon(
@@ -138,7 +138,8 @@ class AppHeader extends StatelessWidget {
                 value: 'logout',
                 child: Row(
                   children: [
-                    Icon(AppIcons.alert, size: 16, color: context.c.fg(Tone.red)),
+                    Icon(AppIcons.alert,
+                        size: 16, color: context.c.fg(Tone.red)),
                     const SizedBox(width: 8),
                     Text(
                       'Logout',
@@ -160,7 +161,8 @@ class AppHeader extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Avatar(ctrl.activeUserInitials, tone: ctrl.currentRole.isAdmin ? Tone.navy : Tone.teal),
+                  Avatar(ctrl.activeUserInitials,
+                      tone: ctrl.currentRole.isAdmin ? Tone.navy : Tone.teal),
                   if (desktop) ...[
                     const SizedBox(width: 9),
                     Column(
@@ -173,7 +175,8 @@ class AppHeader extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(width: 10),
-                    Icon(AppIcons.chevronDown, size: 16, color: context.c.muted),
+                    Icon(AppIcons.chevronDown,
+                        size: 16, color: context.c.muted),
                   ],
                 ],
               ),

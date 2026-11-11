@@ -23,9 +23,9 @@ class ClinicMetrics extends ThemeExtension<ClinicMetrics> {
 
   @override
   ClinicMetrics copyWith({double? radius, double? density}) => ClinicMetrics(
-    radius: radius ?? this.radius,
-    density: density ?? this.density,
-  );
+        radius: radius ?? this.radius,
+        density: density ?? this.density,
+      );
 
   @override
   ClinicMetrics lerp(ThemeExtension<ClinicMetrics>? other, double t) {

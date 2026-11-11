@@ -20,7 +20,8 @@ class AppController extends ChangeNotifier {
   late ClinicData data;
 
   // Authentication State
-  UserProfile? _currentUserProfile = UserProfile.admin(); // Default initial profile
+  UserProfile? _currentUserProfile =
+      UserProfile.admin(); // Default initial profile
   bool _isLoggedIn = true;
 
   UserProfile? get currentUserProfile => _currentUserProfile;
@@ -29,7 +30,8 @@ class AppController extends ChangeNotifier {
 
   String get activeUserName => _currentUserProfile?.name ?? data.userName;
   String get activeUserRole => _currentUserProfile?.role.label ?? data.userRole;
-  String get activeUserInitials => _currentUserProfile?.initials ?? data.userInitials;
+  String get activeUserInitials =>
+      _currentUserProfile?.initials ?? data.userInitials;
 
   AppPage page = AppPage.dashboard;
   String globalSearch = '';
@@ -124,7 +126,9 @@ class AppController extends ChangeNotifier {
         name: name,
         email: user?.email ?? email,
         role: role,
-        initials: initials.isEmpty ? 'KU' : (initials.length > 2 ? initials.substring(0, 2) : initials),
+        initials: initials.isEmpty
+            ? 'KU'
+            : (initials.length > 2 ? initials.substring(0, 2) : initials),
       );
       _isLoggedIn = true;
       page = AppPage.dashboard;
@@ -177,7 +181,9 @@ class AppController extends ChangeNotifier {
         name: name,
         email: user?.email ?? email,
         role: role,
-        initials: initials.isEmpty ? 'KU' : (initials.length > 2 ? initials.substring(0, 2) : initials),
+        initials: initials.isEmpty
+            ? 'KU'
+            : (initials.length > 2 ? initials.substring(0, 2) : initials),
       );
       _isLoggedIn = true;
       page = AppPage.dashboard;
@@ -227,13 +233,14 @@ class AppController extends ChangeNotifier {
       for (final a in appointments)
         if (a.id == id) ...[
           target = a.copyWith(status: status),
-          target!,
+          target,
         ] else
           a,
     ];
 
-    if (target != null && _repo is SupabaseClinicRepository) {
-      (_repo as SupabaseClinicRepository).saveAppointment(target!);
+    final repo = _repo;
+    if (target != null && repo is SupabaseClinicRepository) {
+      repo.saveAppointment(target);
     }
 
     notifyListeners();
@@ -265,8 +272,9 @@ class AppController extends ChangeNotifier {
     );
     appointments = [appt, ...appointments];
 
-    if (_repo is SupabaseClinicRepository) {
-      (_repo as SupabaseClinicRepository).saveAppointment(appt);
+    final repo = _repo;
+    if (repo is SupabaseClinicRepository) {
+      repo.saveAppointment(appt);
     }
 
     notifyListeners();

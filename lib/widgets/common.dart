@@ -26,9 +26,8 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inner = padding == null
-        ? child
-        : Padding(padding: padding!, child: child);
+    final inner =
+        padding == null ? child : Padding(padding: padding!, child: child);
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -424,9 +423,8 @@ class TabsBar extends StatelessWidget {
                           color: t == selected
                               ? context.c.primary
                               : context.c.muted,
-                          fontWeight: t == selected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
+                          fontWeight:
+                              t == selected ? FontWeight.w700 : FontWeight.w500,
                         ),
                       ),
                       if (counts[t] != null) ...[
@@ -698,9 +696,8 @@ class SplitLayout extends StatelessWidget {
           );
         }
         final row = Row(
-          crossAxisAlignment: stretch
-              ? CrossAxisAlignment.stretch
-              : CrossAxisAlignment.start,
+          crossAxisAlignment:
+              stretch ? CrossAxisAlignment.stretch : CrossAxisAlignment.start,
           children: [
             Expanded(flex: leftFlex, child: left),
             SizedBox(width: gap),
@@ -844,7 +841,7 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: padding ?? const EdgeInsets.only(top: 18, bottom: 10),
-    child: Text(text, style: context.sH3),
-  );
+        padding: padding ?? const EdgeInsets.only(top: 18, bottom: 10),
+        child: Text(text, style: context.sH3),
+      );
 }

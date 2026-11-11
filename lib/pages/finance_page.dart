@@ -36,7 +36,8 @@ class _FinancePageState extends State<FinancePage> {
       children: [
         const PageHead(
           title: 'Billing & payments',
-          desc: 'Monitor invoices, verified transactions, refunds, and facility revenue.',
+          desc:
+              'Monitor invoices, verified transactions, refunds, and facility revenue.',
           actions: [
             AppButton('Export ledger', icon: AppIcons.download),
             AppButton(
@@ -88,7 +89,8 @@ class _FinancePageState extends State<FinancePage> {
         ),
         const NoticeBanner(
           title: 'Trusted payment verification enforced',
-          message: 'Online payments can only transition to Paid through verified payment-provider callbacks. Manual success actions are unavailable.',
+          message:
+              'Online payments can only transition to Paid through verified payment-provider callbacks. Manual success actions are unavailable.',
         ),
       ],
     );
@@ -104,20 +106,20 @@ class _Hero extends StatelessWidget {
     final accent = ClinicColors.lighten(context.c.accent, .12);
 
     Widget stat(String value, String label) => Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: context.sH2.copyWith(color: Colors.white, fontSize: 16),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          style: context.sSmall.copyWith(color: const Color(0xFF9FB3C6)),
-        ),
-      ],
-    );
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value,
+              style: context.sH2.copyWith(color: Colors.white, fontSize: 16),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: context.sSmall.copyWith(color: const Color(0xFF9FB3C6)),
+            ),
+          ],
+        );
 
     final main = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
