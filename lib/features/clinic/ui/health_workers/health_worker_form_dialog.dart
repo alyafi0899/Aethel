@@ -300,7 +300,7 @@ class _HealthWorkerFormDialogState extends State<HealthWorkerFormDialog>
                                             fontWeight: FontWeight.bold)),
                                     const SizedBox(height: 6),
                                     DropdownButtonFormField<HealthWorkerType>(
-                                      value: _selectedType,
+                                      initialValue: _selectedType,
                                       items: HealthWorkerType.values
                                           .map((t) => DropdownMenuItem(
                                               value: t, child: Text(t.label)))
@@ -381,8 +381,9 @@ class _HealthWorkerFormDialogState extends State<HealthWorkerFormDialog>
                                           lastDate: DateTime.now()
                                               .add(const Duration(days: 3650)),
                                         );
-                                        if (picked != null)
+                                        if (picked != null) {
                                           setState(() => _strExpiry = picked);
+                                        }
                                       },
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
@@ -446,8 +447,9 @@ class _HealthWorkerFormDialogState extends State<HealthWorkerFormDialog>
                                           lastDate: DateTime.now()
                                               .add(const Duration(days: 3650)),
                                         );
-                                        if (picked != null)
+                                        if (picked != null) {
                                           setState(() => _sipExpiry = picked);
+                                        }
                                       },
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
@@ -501,6 +503,8 @@ class _HealthWorkerFormDialogState extends State<HealthWorkerFormDialog>
                                   workerDocType:
                                       WorkerDocumentType.profile_photo,
                                   existingWorkerDoc: photoDoc,
+                                  isRequired:
+                                      _selectedType == HealthWorkerType.doctor,
                                 ),
                                 DocumentUploadTile(
                                   title: 'Unggah Scan KTP',

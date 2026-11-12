@@ -4,13 +4,52 @@ Prometheon Clinic OS is a full-featured, production-ready Flutter healthcare ope
 
 ---
 
-## 🌟 Key Features
+## 🌟 Key Features (Stage 1 & Stage 2 Completed)
 
-- **Role-Based Access Control (RBAC)**: Dedicated workflows and views for **Admin** (full administrative, financial, and facility control) and **Nurse / Perawat** (clinical triage, vital signs, patient care, room management).
-- **Live Supabase Database Persistence**: Real-time integration with Postgres database tables (`appointments`, `screening_sessions`, `patients`, `doctors`, `rooms`, `invoices`, `notifications`, `audit_logs`).
-- **Row Level Security (RLS)**: Enforced data safety using indexed SECURITY DEFINER helpers (`auth_role()`, `auth_facility_id()`, `has_permission()`).
-- **Append-Only Audit Trail**: Immutable logging of operational actions across all clinical and administrative workflows.
-- **Administrative User Management**: Server-side user creation via Supabase Edge Function (`admin-create-user`).
+- **Clinic Registration & Authentication**: Full sign-up flow with email confirmation, password strength validation, and automatic trigger profile/clinic creation.
+- **6-Step Onboarding Wizard**: Complete registration flow covering Data Dasar (SIO/Akta upload, location geolocator), Layanan & Fasilitas, Administrasi & Legal (BPJS, Org structure), Sistem RME (SATUSEHAT integration, write-only API key), Tenaga Kesehatan, and Review & Submit.
+- **Visual Identity & Public Media**: Logo, cover photo, and photo gallery management (`clinic-public-media` bucket) with moderation status badges.
+- **Compliance & Expiry Monitoring**: Automatic tracking for SIO, STR, and SIP expiration with real-time system alerts, global critical banners, and automatic public search exclusion for expired licenses.
+- **Patient Reviews & Ratings**: Verification-tied reviews management, star distribution, response rate analytics, official clinic reply dialog, and platform report dialog.
+- **Private Patient Feedback**: Confidential feedback intake (`clinic_feedback_private`) with status tracking (`new`/`read`/`resolved`) and internal note management.
+- **Legal Consents**: Version-controlled terms & privacy policy agreement dialog (`legal_consents` table).
+- **Health Worker Management**: Manage doctors and nurses with sensitive PII masking (NIK 16 digits, NPWP), STR/SIP expiry tracking, duty status toggling, and supporting document uploads.
+- **Internal Operations Layer**: Real-time queue management (+/- controls, process status), operational facility status, daily statistics, and calculated staffing metrics.
+- **Shared Public Operations Layer**: Patient-facing live view (`clinic_public_preview` RPC and `clinic_operations_public` view) with clinic status, wait time, available doctors, and publishing control.
+- **Row Level Security (RLS)**: Enforced multi-tenant data isolation per clinic using indexed SECURITY DEFINER functions (`is_clinic_member()`, `is_clinic_owner()`, `is_platform_admin()`).
+
+---
+
+## 🏗️ Folder Structure & Architecture
+
+```
+lib/
+├── core/
+│   ├── config/env.dart               # Environment constants (SUPABASE_URL, PUBLISHABLE_KEY)
+│   ├── errors/error_handler.dart     # Global Flutter & platform error handler
+│   ├── theme/                        # Context extentions, metrics, colors, dark/light themes
+│   └── utils/
+│       ├── validators.dart           # AppValidators (email, phone, NIK, NPWP, lat/lng, SIO expiry)
+│       ├── formatters.dart           # AppFormatters (Rupiah, byte sizes, NIK/NPWP masking)
+│       └── error_mapper.dart         # ErrorMapper (Auth, Postgrest 42501/23505/23514/23503, Storage)
+├── features/
+│   ├── auth/
+│   │   ├── data/auth_repository.dart # AuthRepository (SupabaseAuthRepository, FakeAuthRepository)
+│   │   ├── state/auth_controller.dart# AuthController ChangeNotifier
+│   │   └── ui/                       # AuthGate, LoginPage, RegisterClinicPage, ForgotPasswordPage, PendingVerificationPage, LegalConsentDialog
+│   ├── clinic/
+│   │   ├── data/                     # ClinicProfileRepository, CatalogRepository, StaffRepository, DocumentRepository, MediaRepository, ComplianceRepository, ReviewsRepository, FeedbackRepository, LegalConsentRepository
+│   │   ├── models/                   # ClinicModel, ProfileModel, HealthWorkerModels, DocumentModels, OnboardingStatusModel, ComplianceModel, ReviewModels, FeedbackModel, MediaModel
+│   │   ├── state/clinic_controller.dart # ClinicController ChangeNotifier
+│   │   ├── ui/                       # OnboardingWizardPage, HealthWorkerListPage, HealthWorkerFormDialog, CompliancePage, ClinicReviewsPage, ClinicFeedbackPage
+│   │   └── widgets/                  # DocumentUploadTile, PublicMediaUploader
+│   └── operations/
+│       ├── data/operations_repository.dart # OperationsRepository
+│       ├── models/clinic_operations_models.dart # Internal and Public operations models
+│       └── ui/                       # InternalOperationsPage, PublicOperationsPage
+├── shell/                            # AppShell, AppHeader, Sidebar with KLINIK menu group
+└── pages/                            # Legacy demo pages (Appointments, Triage, Finance, etc.)
+```
 
 ---
 
@@ -18,97 +57,73 @@ Prometheon Clinic OS is a full-featured, production-ready Flutter healthcare ope
 
 ### 1. Prerequisites
 - Flutter SDK 3.22+ installed
-- Supabase CLI installed (for local database migrations)
+- Google Chrome (for Web) or Android Studio / Emulator (for Android)
 
-### 2. Configure Environment
-Copy `env.example.json` to `env.json`:
+### 2. Run Application (Web or Android)
+
+Run with inline `--dart-define` parameters:
 ```bash
-cp env.example.json env.json
-```
-Edit `env.json` with your Supabase credentials:
-```json
-{
-  "SUPABASE_URL": "https://qshmccjazkupvbelyjhi.supabase.co",
-  "SUPABASE_ANON_KEY": "sb_publishable_0FJxIsGzTDi8AeIj42utSQ_IPEKBWkZ",
-  "USE_MOCK": false,
-  "DEFAULT_LOCALE": "id_ID",
-  "DEFAULT_CURRENCY": "IDR",
-  "DEFAULT_TIMEZONE": "Asia/Jakarta"
-}
+flutter run -d chrome \
+  --dart-define=SUPABASE_URL=https://qshmccjazkupvbelyjhi.supabase.co \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_0FJxIsGzTDi8AeIj42utSQ_IPEKBWkZ
 ```
 
-### 3. Run Application
+Or run on Android:
 ```bash
-flutter pub get
-flutter run --dart-define-from-file=env.json
+flutter run -d android \
+  --dart-define=SUPABASE_URL=https://qshmccjazkupvbelyjhi.supabase.co \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_0FJxIsGzTDi8AeIj42utSQ_IPEKBWkZ
 ```
 
 ---
 
-## 🗄️ Supabase Database Setup & Migrations
+## 🗄️ Supabase Database & Auth Setup Order
 
-### 1. Link to Supabase Project
-```bash
-supabase link --project-ref qshmccjazkupvbelyjhi
-```
+### Step 1: Execute Migration SQL
+1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard).
+2. Open **SQL Editor**.
+3. Run `supabase/migrations/0001_clinic_core.sql` followed by `supabase/migrations/0002_trust_and_feedback.sql`.
 
-### 2. Apply Migrations
-Run database migrations sequentially:
-```bash
-supabase db push
-```
-Or execute the following migration files in Order:
-1. `supabase/migrations/01_schema.sql` (Tables, Enums, Triggers, Views)
-2. `supabase/migrations/02_security_rls.sql` (Row Level Security & Policies)
-3. `supabase/migrations/03_rpcs.sql` (Atomic Stored Procedures & Logic)
+### Step 2: Manual Moderation (Approval Snippets)
+To manually approve submitted clinic documents or public media via SQL Editor:
 
-### 3. Seed Development Data (Optional)
-```bash
-supabase db execute --file supabase/seed.sql
-```
-
-### 4. Deploy Edge Functions
-```bash
-supabase functions deploy admin-create-user --no-verify-jwt
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-```
-
----
-
-## 🔑 Initial Admin Account Bootstrap Instructions
-
-1. Log in to the [Supabase Dashboard](https://supabase.com/dashboard).
-2. Go to **Authentication -> Users** and click **Add User -> Create User**.
-3. Create a user with email `admin@prometheon.health` and password.
-4. Run the following SQL query in the **SQL Editor** to grant Administrator role:
 ```sql
-INSERT INTO profiles (id, facility_id, full_name, role, is_active)
-VALUES (
-  'YOUR_USER_UUID',
-  'a0000000-0000-0000-0000-000000000001',
-  'Elena Cruz',
-  'admin',
-  TRUE
-) ON CONFLICT (id) DO UPDATE SET role = 'admin';
+-- Approve a clinic document:
+SELECT review_clinic_document('DOCUMENT_UUID', true, NULL);
+
+-- Reject a clinic document:
+SELECT review_clinic_document('DOCUMENT_UUID', false, 'Dokumen SIO kurang jelas.');
+
+-- Approve a public media image (Logo/Cover/Gallery):
+SELECT review_clinic_media('MEDIA_UUID', true, NULL);
+
+-- Resolve a review report (uphold report and remove review):
+SELECT resolve_review_report('REPORT_UUID', true, 'Ulasan terbukti melanggar privasi.');
 ```
 
----
-
-## 🔒 Recommended Auth Settings in Supabase Dashboard
-
-To ensure production security compliance:
-1. Disable Public Sign-ups (**Authentication -> Settings -> Disable Allow new users to sign up**).
-2. Enable Email Confirmation (**Authentication -> Settings -> Enable Confirm email**).
-3. Set minimum password length to 10 characters.
-4. Enable Leaked Password Protection.
+### Step 3: Schedule Daily Compliance Expiry Refresh (pg_cron)
+To automatically refresh compliance alert status daily at 01:00 AM UTC:
+```sql
+SELECT cron.schedule(
+  'compliance-alerts-daily',
+  '0 1 * * *',
+  $$SELECT public.refresh_compliance_alerts(null)$$
+);
+```
 
 ---
 
 ## 🧪 Testing & Code Quality
 
-Run code formatting, linter analysis, and automated test suite:
+Run code formatting, linter static analysis, and automated unit/widget test suite:
+
 ```bash
+# 1. Format code
 dart format .
+
+# 2. Run static analysis (0 issues requirement)
 flutter analyze
-flutter test test/widget_test.dart test/auth_role_test.dart
+
+# 3. Execute all test suites
+flutter test
 ```

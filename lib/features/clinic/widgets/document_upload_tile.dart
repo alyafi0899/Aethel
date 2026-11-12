@@ -71,7 +71,6 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
       final files = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
-        webOptions: const WebOptions(withData: true),
       );
 
       if (files.isEmpty) {
@@ -96,7 +95,9 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
       final ext = file.extension?.toLowerCase() ?? '';
       final mimeType = ext == 'pdf'
           ? 'application/pdf'
-          : (ext == 'webp' ? 'image/webp' : 'image/${ext == 'jpg' ? 'jpeg' : ext}');
+          : (ext == 'webp'
+              ? 'image/webp'
+              : 'image/${ext == 'jpg' ? 'jpeg' : ext}');
 
       if (widget.docType != null && widget.clinicId != null) {
         // Delete previous if exists
@@ -145,7 +146,8 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Dokumen?'),
-        content: const Text('Dokumen yang terunggah akan dihapus secara permanen.'),
+        content:
+            const Text('Dokumen yang terunggah akan dihapus secara permanen.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -191,7 +193,8 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
     if (signedUrl == null || signedUrl.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tautan pratinjau dokumen tidak tersedia.')),
+          const SnackBar(
+              content: Text('Tautan pratinjau dokumen tidak tersedia.')),
         );
       }
       return;
@@ -202,7 +205,8 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak dapat membuka pratinjau dokumen.')),
+          const SnackBar(
+              content: Text('Tidak dapat membuka pratinjau dokumen.')),
         );
       }
     }
@@ -217,14 +221,19 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
     final bool hasDoc = clinicDoc != null || workerDoc != null;
     final String? fileName = clinicDoc?.fileName ?? workerDoc?.fileName;
     final int? sizeBytes = clinicDoc?.sizeBytes ?? workerDoc?.sizeBytes;
-    final DocumentReviewStatus reviewStatus =
-        clinicDoc?.reviewStatus ?? workerDoc?.reviewStatus ?? DocumentReviewStatus.pending;
+    final DocumentReviewStatus reviewStatus = clinicDoc?.reviewStatus ??
+        workerDoc?.reviewStatus ??
+        DocumentReviewStatus.pending;
     final String? reviewNote = clinicDoc?.reviewNote ?? workerDoc?.reviewNote;
     final String? signedUrl = clinicDoc?.signedUrl ?? workerDoc?.signedUrl;
 
     Color statusColor = Colors.amber.shade800;
-    if (reviewStatus == DocumentReviewStatus.approved) statusColor = Colors.green;
-    if (reviewStatus == DocumentReviewStatus.rejected) statusColor = Colors.red;
+    if (reviewStatus == DocumentReviewStatus.approved) {
+      statusColor = Colors.green;
+    }
+    if (reviewStatus == DocumentReviewStatus.rejected) {
+      statusColor = Colors.red;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -234,8 +243,12 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: hasDoc
-              ? (reviewStatus == DocumentReviewStatus.approved ? Colors.green.withValues(alpha: 0.5) : c.border)
-              : (widget.isRequired ? Colors.amber.withValues(alpha: 0.6) : c.border),
+              ? (reviewStatus == DocumentReviewStatus.approved
+                  ? Colors.green.withValues(alpha: 0.5)
+                  : c.border)
+              : (widget.isRequired
+                  ? Colors.amber.withValues(alpha: 0.6)
+                  : c.border),
           width: hasDoc ? 1.5 : 1.0,
         ),
       ),
@@ -267,12 +280,14 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
                         Expanded(
                           child: Text(
                             widget.title,
-                            style: context.sBody.copyWith(fontWeight: FontWeight.bold),
+                            style: context.sBody
+                                .copyWith(fontWeight: FontWeight.bold),
                           ),
                         ),
                         if (widget.isRequired)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.red.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
@@ -298,7 +313,6 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
             ],
           ),
           const SizedBox(height: 12),
-
           if (_error != null) ...[
             Container(
               padding: const EdgeInsets.all(8),
@@ -313,7 +327,8 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
                   Expanded(
                     child: Text(
                       _error!,
-                      style: context.sSmall.copyWith(color: Colors.red, fontSize: 12),
+                      style: context.sSmall
+                          .copyWith(color: Colors.red, fontSize: 12),
                     ),
                   ),
                 ],
@@ -321,7 +336,6 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
             ),
             const SizedBox(height: 8),
           ],
-
           if (hasDoc) ...[
             Container(
               padding: const EdgeInsets.all(10),
@@ -358,7 +372,8 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: statusColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
@@ -377,14 +392,17 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
                           InkWell(
                             onTap: () => _openSignedUrl(signedUrl),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
                               child: Row(
                                 children: [
-                                  Icon(Icons.visibility_outlined, size: 14, color: c.accent),
+                                  Icon(Icons.visibility_outlined,
+                                      size: 14, color: c.accent),
                                   const SizedBox(width: 4),
                                   Text(
                                     'Lihat',
-                                    style: context.sBody.copyWith(color: c.accent, fontSize: 12),
+                                    style: context.sBody.copyWith(
+                                        color: c.accent, fontSize: 12),
                                   ),
                                 ],
                               ),
@@ -394,10 +412,12 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
                           InkWell(
                             onTap: _pickAndUpload,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
                               child: Text(
                                 'Ganti',
-                                style: context.sBody.copyWith(color: Colors.blue, fontSize: 12),
+                                style: context.sBody
+                                    .copyWith(color: Colors.blue, fontSize: 12),
                               ),
                             ),
                           ),
@@ -405,10 +425,12 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
                           InkWell(
                             onTap: _delete,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
                               child: Text(
                                 'Hapus',
-                                style: context.sBody.copyWith(color: Colors.red, fontSize: 12),
+                                style: context.sBody
+                                    .copyWith(color: Colors.red, fontSize: 12),
                               ),
                             ),
                           ),
@@ -420,7 +442,8 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
                     const SizedBox(height: 6),
                     Text(
                       'Catatan peninjau: $reviewNote',
-                      style: context.sSmall.copyWith(color: Colors.red, fontSize: 12),
+                      style: context.sSmall
+                          .copyWith(color: Colors.red, fontSize: 12),
                     ),
                   ],
                 ],

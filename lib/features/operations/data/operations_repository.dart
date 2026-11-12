@@ -12,9 +12,10 @@ abstract class OperationsRepository {
 
 class SupabaseOperationsRepository implements OperationsRepository {
   SupabaseOperationsRepository({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+      : _customClient = client;
 
-  final SupabaseClient _client;
+  final SupabaseClient? _customClient;
+  SupabaseClient get _client => _customClient ?? Supabase.instance.client;
 
   @override
   Future<ClinicOperationsInternalModel> fetchInternalOperations(

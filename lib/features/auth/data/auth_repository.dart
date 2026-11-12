@@ -34,10 +34,10 @@ abstract class AuthRepository {
 }
 
 class SupabaseAuthRepository implements AuthRepository {
-  SupabaseAuthRepository({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+  SupabaseAuthRepository({SupabaseClient? client}) : _customClient = client;
 
-  final SupabaseClient _client;
+  final SupabaseClient? _customClient;
+  SupabaseClient get _client => _customClient ?? Supabase.instance.client;
 
   @override
   Stream<AuthState> get onAuthStateChange => _client.auth.onAuthStateChange;

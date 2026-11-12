@@ -1,3 +1,5 @@
+// ignore_for_file: constant_identifier_names
+
 enum ClinicStatus {
   draft('draft', 'Draf'),
   submitted('submitted', 'Telah Dikirim'),
@@ -255,6 +257,115 @@ enum EmrAppType {
     return EmrAppType.values.firstWhere(
       (e) => e.dbValue == value,
       orElse: () => EmrAppType.none,
+    );
+  }
+}
+
+// --- NEW ENUMS FOR SCHEMA 0002 ---
+
+enum MediaKind {
+  logo('logo', 'Logo Klinik'),
+  cover('cover', 'Foto Sampul Klinik'),
+  gallery('gallery', 'Galeri Foto Klinik');
+
+  const MediaKind(this.dbValue, this.label);
+  final String dbValue;
+  final String label;
+
+  static MediaKind fromDb(String? value) {
+    return MediaKind.values.firstWhere(
+      (e) => e.dbValue == value,
+      orElse: () => MediaKind.gallery,
+    );
+  }
+}
+
+enum ReportReason {
+  abusive('abusive', 'Bahasa Kasar / Pelecehan'),
+  false_information('false_information', 'Informasi Palsu / Beda Fakta'),
+  privacy_violation('privacy_violation', 'Pelanggaran Privasi / PII Pasien'),
+  spam('spam', 'Spam / Iklan'),
+  other('other', 'Alasan Lainnya');
+
+  const ReportReason(this.dbValue, this.label);
+  final String dbValue;
+  final String label;
+
+  static ReportReason fromDb(String? value) {
+    return ReportReason.values.firstWhere(
+      (e) => e.dbValue == value,
+      orElse: () => ReportReason.other,
+    );
+  }
+}
+
+enum ReportStatus {
+  open('open', 'Menunggu Peninjauan'),
+  upheld('upheld', 'Diterima (Ulasan Dihapus)'),
+  dismissed('dismissed', 'Ditolak (Ulasan Tetap)');
+
+  const ReportStatus(this.dbValue, this.label);
+  final String dbValue;
+  final String label;
+
+  static ReportStatus fromDb(String? value) {
+    return ReportStatus.values.firstWhere(
+      (e) => e.dbValue == value,
+      orElse: () => ReportStatus.open,
+    );
+  }
+}
+
+enum FeedbackCategory {
+  service('service', 'Pelayanan Medis'),
+  facility('facility', 'Fasilitas & Kebersihan'),
+  staff('staff', 'Sikap Staf & Tenaga Kesehatan'),
+  waiting_time('waiting_time', 'Waktu Tunggu'),
+  billing('billing', 'Biaya & Kasir'),
+  other('other', 'Lain-lain');
+
+  const FeedbackCategory(this.dbValue, this.label);
+  final String dbValue;
+  final String label;
+
+  static FeedbackCategory fromDb(String? value) {
+    return FeedbackCategory.values.firstWhere(
+      (e) => e.dbValue == value,
+      orElse: () => FeedbackCategory.other,
+    );
+  }
+}
+
+enum FeedbackStatus {
+  newStatus('new', 'Baru'),
+  read('read', 'Dibaca'),
+  resolved('resolved', 'Selesai Ditindaklanjuti');
+
+  const FeedbackStatus(this.dbValue, this.label);
+  final String dbValue;
+  final String label;
+
+  static FeedbackStatus fromDb(String? value) {
+    return FeedbackStatus.values.firstWhere(
+      (e) => e.dbValue == value,
+      orElse: () => FeedbackStatus.newStatus,
+    );
+  }
+}
+
+enum AlertSeverity {
+  info('info', 'Informasi'),
+  warning('warning', 'Peringatan'),
+  critical('critical', 'Kritis / Kedaluwarsa');
+
+  const AlertSeverity(this.dbValue, this.label);
+  final String dbValue;
+  final String label;
+
+  static AlertSeverity fromDb(String? value) {
+    return AlertSeverity.values.firstWhere(
+      (e) => e.dbValue == value,
+      orElse: () => AlertSeverity.info,
     );
   }
 }

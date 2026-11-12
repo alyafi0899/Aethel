@@ -35,3 +35,9 @@ This document records key design decisions, technical trade-offs, and security c
 ## 8. Shared Public Operations Layer
 - **Decision**: View `clinic_operations_public` exposes only verified and published clinics. Public preview for clinic managers is fetched via `clinic_public_preview` RPC. Unpopulated operational fields (such as `next_available_slot`) return `null` until appointment module activation.
 - **Rationale**: Separates real-time patient-facing queue status from internal management state.
+
+## 9. Phase A Resolution of Analyzer & Test Issues
+- **AuthController.initSession**: Added public `initSession()` method to `AuthController` for explicit session initialization in tests without duplicate listener logic.
+- **ClinicOperationsPublicModel.toJson**: Added `toJson()` with exact snake_case keys matching `fromJson`.
+- **AppFormatters.formatRupiah**: Added `formatRupiah` using `NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)` with non-breaking space normalization.
+- **Flow Control Lint**: Enclosed all single-line `if` statements in curly braces `{}` across `document_upload_tile.dart`.

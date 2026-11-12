@@ -5,7 +5,7 @@ class AppValidators {
     if (value == null || value.trim().isEmpty) {
       return 'Email tidak boleh kosong.';
     }
-    final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    final emailRegExp = RegExp(r'^[\w\.\+-]+@([\w-]+\.)+[\w-]{2,6}$');
     if (!emailRegExp.hasMatch(value.trim())) {
       return 'Format email tidak valid (contoh: admin@klinik.com).';
     }

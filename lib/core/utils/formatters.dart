@@ -3,14 +3,18 @@ import 'package:intl/intl.dart';
 /// Formatting utilities for Indonesian currency, dates, masked PII, and phones.
 class AppFormatters {
   /// Formats currency in IDR (e.g. 75000 -> "Rp 75.000").
-  static String formatCurrency(int amount) {
+  static String formatRupiah(int? amount) {
+    if (amount == null) return 'Rp 0';
     final formatter = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
       decimalDigits: 0,
     );
-    return formatter.format(amount);
+    return formatter.format(amount).replaceAll('\u00A0', ' ');
   }
+
+  /// Formats currency in IDR (alias for formatRupiah).
+  static String formatCurrency(int amount) => formatRupiah(amount);
 
   /// Masks sensitive NIK (16 digits) to display only the last 4 digits.
   static String maskNik(String? nik) {

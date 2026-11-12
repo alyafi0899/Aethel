@@ -4,8 +4,15 @@ import 'package:provider/provider.dart';
 import '../core/responsive.dart';
 import '../core/theme/context_ext.dart';
 import '../data/models.dart';
+import '../features/auth/state/auth_controller.dart';
+import '../features/auth/ui/legal_consent_dialog.dart';
+import '../features/clinic/data/legal_consent_repository.dart';
+import '../features/clinic/state/clinic_controller.dart';
+import '../features/clinic/ui/compliance_page.dart';
+import '../features/clinic/ui/feedback/clinic_feedback_page.dart';
 import '../features/clinic/ui/health_workers/health_worker_list_page.dart';
 import '../features/clinic/ui/onboarding_wizard_page.dart';
+import '../features/clinic/ui/reviews/clinic_reviews_page.dart';
 import '../features/operations/ui/internal_operations_page.dart';
 import '../features/operations/ui/public_operations_page.dart';
 import '../pages/appointments_page.dart';
@@ -29,12 +36,56 @@ import '../widgets/buttons.dart';
 import 'app_header.dart';
 import 'sidebar.dart';
 
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   const AppShell({super.key});
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  bool _checkedConsent = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_checkedConsent) {
+      _checkLegalConsents();
+      _checkedConsent = true;
+    }
+  }
+
+  void _checkLegalConsents() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final clinicCtrl = context.read<ClinicController>();
+      final authCtrl = context.read<AuthController>();
+      final uid = authCtrl.user?.id;
+      if (uid != null) {
+        final hasTerms = clinicCtrl.userConsents.any(
+          (c) =>
+              c.documentType == 'terms' && c.documentVersion == kLegalVersion,
+        );
+        final hasPrivacy = clinicCtrl.userConsents.any(
+          (c) =>
+              c.documentType == 'privacy' && c.documentVersion == kLegalVersion,
+        );
+
+        if (!hasTerms || !hasPrivacy) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => const LegalConsentDialog(),
+          );
+        }
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final ctrl = context.watch<AppController>();
+    final clinicCtrl = context.watch<ClinicController>();
+    final compliance = clinicCtrl.complianceStatus;
 
     if (ctrl.loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -57,9 +108,65 @@ class AppShell extends StatelessWidget {
     }
 
     final desktop = Breakpoints.isDesktop(context);
+
     final content = Column(
       children: [
         const AppHeader(),
+
+        // Global Compliance Alert Banners
+        if (!compliance.sioValid || compliance.hasCriticalAlerts)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            color: Colors.red.shade900,
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'SIO Klinik Sudah Kedaluwarsa! Klinik disembunyikan dari publik dan tidak dapat dipublikasikan sampai SIO diperbarui.',
+                    style: context.sBody.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13),
+                  ),
+                ),
+                AppButton(
+                  'Lihat Halaman Kepatuhan',
+                  kind: BtnKind.secondary,
+                  compact: true,
+                  onPressed: () => ctrl.go(AppPage.clinicCompliance),
+                ),
+              ],
+            ),
+          )
+        else if (compliance.hasWarningAlerts)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            color: Colors.amber.shade900,
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Terdapat peringatan masa berlaku perizinan (SIO/STR/SIP) yang akan segera berakhir.',
+                    style: context.sBody
+                        .copyWith(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+                AppButton(
+                  'Periksa',
+                  kind: BtnKind.secondary,
+                  compact: true,
+                  onPressed: () => ctrl.go(AppPage.clinicCompliance),
+                ),
+              ],
+            ),
+          ),
+
         Expanded(child: _PageBody(page: ctrl.page)),
       ],
     );
@@ -110,6 +217,12 @@ class _PageBody extends StatelessWidget {
         return const InternalOperationsPage();
       case AppPage.clinicOperationsPublic:
         return const PublicOperationsPage();
+      case AppPage.clinicReviews:
+        return const ClinicReviewsPage();
+      case AppPage.clinicFeedback:
+        return const ClinicFeedbackPage();
+      case AppPage.clinicCompliance:
+        return const CompliancePage();
 
       // Demo Pages
       case AppPage.dashboard:

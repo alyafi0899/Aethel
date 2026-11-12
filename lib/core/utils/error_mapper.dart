@@ -70,6 +70,17 @@ class ErrorMapper {
       if (detail.contains('clinics_owner_unique')) {
         return 'Akun Anda sudah memiliki pendaftaran klinik.';
       }
+      if (detail.contains('clinic_review_replies') ||
+          msg.contains('clinic_review_replies')) {
+        return 'Ulasan ini sudah pernah dibalas.';
+      }
+      if (detail.contains('review_reports_one_open') ||
+          msg.contains('review_reports_one_open')) {
+        return 'Laporan ulasan sudah pernah diajukan dan sedang dalam proses peninjauan.';
+      }
+      if (detail.contains('legal_consents') || msg.contains('legal_consents')) {
+        return 'Persetujuan dokumen hukum versi ini sudah tersimpan.';
+      }
       return 'Data ini sudah terdaftar di sistem (duplikasi data).';
     }
 
@@ -83,6 +94,10 @@ class ErrorMapper {
 
     if (msg.contains('onboarding_incomplete')) {
       return _parseOnboardingIncomplete(detail);
+    }
+
+    if (msg.contains('sio_expired')) {
+      return 'SIO klinik sudah kedaluwarsa. Perbarui SIO sebelum menampilkan klinik ke publik.';
     }
 
     if (msg.contains('invalid_status_for_submit')) {
@@ -103,7 +118,7 @@ class ErrorMapper {
   static String _mapStorageError(StorageException error) {
     final msg = error.message.toLowerCase();
     if (msg.contains('payload too large') || msg.contains('exceeds')) {
-      return 'Ukuran berkas terlalu besar. Batas maksimal adalah 10 MB.';
+      return 'Ukuran berkas terlalu besar. Batas maksimal adalah 5 MB untuk gambar publik.';
     }
     if (msg.contains('mime') || msg.contains('type')) {
       return 'Format berkas tidak didukung. Gunakan PDF, JPG, PNG, atau WEBP.';
@@ -137,6 +152,7 @@ class ErrorMapper {
       collectMissing(decoded['admin_legal']);
       collectMissing(decoded['emr_system']);
       collectMissing(decoded['health_workers']);
+      collectMissing(decoded['public_media']);
 
       if (missingList.isNotEmpty) {
         return 'Data belum lengkap:\n• ${missingList.join('\n• ')}';
@@ -175,6 +191,10 @@ class ErrorMapper {
         return 'Unggah Dokumen SIO (Data Dasar)';
       case 'doc:deed_of_establishment':
         return 'Unggah Dokumen Akta Pendirian (Data Dasar)';
+      case 'media:logo':
+        return 'Unggah Logo Klinik (Identitas Visual)';
+      case 'media:cover':
+        return 'Unggah Sampul Klinik (Identitas Visual)';
       case 'services':
         return 'Jenis Layanan / Spesialisasi (Layanan & Fasilitas)';
       case 'facilities':
@@ -203,6 +223,8 @@ class ErrorMapper {
         return 'Penanggung Jawab Klinik (Tenaga Kesehatan)';
       case 'doctor_with_str_sip':
         return 'Dokter dengan STR & SIP Aktif (Tenaga Kesehatan)';
+      case 'doctor_profile_photo':
+        return 'Pasfoto Dokter Aktif (Tenaga Kesehatan)';
       default:
         return key;
     }
@@ -212,6 +234,7 @@ class ErrorMapper {
   static int keyToStepIndex(String key) {
     if (key.startsWith('doc:sio') ||
         key.startsWith('doc:deed_of') ||
+        key.startsWith('media:') ||
         key == 'clinic_name' ||
         key == 'legal_entity_type' ||
         key == 'address_full' ||
@@ -243,7 +266,9 @@ class ErrorMapper {
         key.startsWith('doc:clinic_photo')) {
       return 4;
     }
-    if (key == 'person_in_charge' || key == 'doctor_with_str_sip') {
+    if (key == 'person_in_charge' ||
+        key == 'doctor_with_str_sip' ||
+        key == 'doctor_profile_photo') {
       return 5;
     }
     return 1;

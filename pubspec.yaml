@@ -17,6 +17,7 @@ dependencies:
   intl: ^0.20.3
   url_launcher: ^6.3.3
   uuid: ^4.6.0
+  image: ^4.12.0
 
 dev_dependencies:
   flutter_test:
@@ -25,3 +26,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/legal/terms_id.md
+    - assets/legal/privacy_id.md

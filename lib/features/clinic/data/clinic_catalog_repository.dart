@@ -38,9 +38,10 @@ abstract class ClinicCatalogRepository {
 
 class SupabaseClinicCatalogRepository implements ClinicCatalogRepository {
   SupabaseClinicCatalogRepository({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+      : _customClient = client;
 
-  final SupabaseClient _client;
+  final SupabaseClient? _customClient;
+  SupabaseClient get _client => _customClient ?? Supabase.instance.client;
 
   @override
   Future<List<ClinicServiceModel>> fetchServices(String clinicId) async {

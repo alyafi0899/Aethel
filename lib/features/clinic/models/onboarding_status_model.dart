@@ -28,6 +28,7 @@ class OnboardingStatusModel {
     this.adminLegal = const OnboardingSectionStatus(),
     this.emrSystem = const OnboardingSectionStatus(),
     this.healthWorkers = const OnboardingSectionStatus(),
+    this.publicMedia = const OnboardingSectionStatus(),
     this.readyToSubmit = false,
   });
 
@@ -37,6 +38,7 @@ class OnboardingStatusModel {
   final OnboardingSectionStatus adminLegal;
   final OnboardingSectionStatus emrSystem;
   final OnboardingSectionStatus healthWorkers;
+  final OnboardingSectionStatus publicMedia;
   final bool readyToSubmit;
 
   int get completedSectionsCount {
@@ -46,10 +48,11 @@ class OnboardingStatusModel {
     if (adminLegal.complete) count++;
     if (emrSystem.complete) count++;
     if (healthWorkers.complete) count++;
+    if (publicMedia.complete) count++;
     return count;
   }
 
-  double get completionProgress => completedSectionsCount / 5.0;
+  double get completionProgress => completedSectionsCount / 6.0;
 
   factory OnboardingStatusModel.fromJson(Map<String, dynamic> json) {
     return OnboardingStatusModel(
@@ -64,6 +67,8 @@ class OnboardingStatusModel {
           json['emr_system'] as Map<String, dynamic>?),
       healthWorkers: OnboardingSectionStatus.fromJson(
           json['health_workers'] as Map<String, dynamic>?),
+      publicMedia: OnboardingSectionStatus.fromJson(
+          json['public_media'] as Map<String, dynamic>?),
       readyToSubmit: (json['ready_to_submit'] as bool?) ?? false,
     );
   }

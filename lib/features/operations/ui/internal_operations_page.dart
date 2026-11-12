@@ -245,7 +245,7 @@ class _InternalOperationsPageState extends State<InternalOperationsPage> {
                                   .copyWith(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 6),
                           DropdownButtonFormField<QueueProcessStatus>(
-                            value: _queueStatus,
+                            initialValue: _queueStatus,
                             items: QueueProcessStatus.values
                                 .map((s) => DropdownMenuItem(
                                     value: s, child: Text(s.label)))
@@ -265,7 +265,7 @@ class _InternalOperationsPageState extends State<InternalOperationsPage> {
                                   .copyWith(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 6),
                           DropdownButtonFormField<FacilityOperatingStatus>(
-                            value: _facilityStatus,
+                            initialValue: _facilityStatus,
                             items: FacilityOperatingStatus.values
                                 .map((s) => DropdownMenuItem(
                                     value: s, child: Text(s.label)))

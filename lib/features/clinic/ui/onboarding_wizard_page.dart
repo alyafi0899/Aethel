@@ -20,6 +20,7 @@ import '../models/clinic_org_structure_model.dart';
 
 import '../state/clinic_controller.dart';
 import '../widgets/document_upload_tile.dart';
+import '../widgets/public_media_uploader.dart';
 import 'health_workers/health_worker_form_dialog.dart';
 
 class OnboardingWizardPage extends StatefulWidget {
@@ -506,7 +507,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                 style: context.sBody.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             DropdownButtonFormField<LegalEntityType>(
-              value: _selectedLegalType,
+              initialValue: _selectedLegalType,
               items: LegalEntityType.values
                   .map((e) => DropdownMenuItem(value: e, child: Text(e.label)))
                   .toList(),
@@ -717,6 +718,42 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                 onChanged: () => clinicCtrl.refreshClinicDocuments(),
               ),
             ],
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            Text('Identitas Visual Publik Klinik',
+                style: context.sH2.copyWith(fontSize: 18)),
+            Text(
+                'Unggah logo dan foto sampul resmi yang akan ditampilkan ke pasien.',
+                style: context.sSmall),
+            const SizedBox(height: 16),
+
+            PublicMediaUploader(
+              title: 'Logo Resmi Klinik',
+              subtitle: 'Logo format persegi (PNG/WEBP/JPG, maks. 5 MB)',
+              clinicId: clinicId,
+              kind: MediaKind.logo,
+              existingMedia: clinicCtrl.mediaList,
+              isRequired: true,
+              onChanged: () => clinicCtrl.refreshMedia(),
+            ),
+            PublicMediaUploader(
+              title: 'Foto Sampul Klinik',
+              subtitle: 'Foto banner tampak depan klinik (16:9, maks. 5 MB)',
+              clinicId: clinicId,
+              kind: MediaKind.cover,
+              existingMedia: clinicCtrl.mediaList,
+              isRequired: true,
+              onChanged: () => clinicCtrl.refreshMedia(),
+            ),
+            PublicMediaUploader(
+              title: 'Galeri Foto Klinik (Opsional)',
+              subtitle: 'Foto fasilitas dan suasana pelayanan (maks. 8 foto)',
+              clinicId: clinicId,
+              kind: MediaKind.gallery,
+              existingMedia: clinicCtrl.mediaList,
+              onChanged: () => clinicCtrl.refreshMedia(),
+            ),
           ],
         ),
       ),
@@ -947,8 +984,9 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                           onChanged: (val) {
                             final updatedList =
                                 clinicCtrl.operatingHours.map((h) {
-                              if (h.id == hours.id)
+                              if (h.id == hours.id) {
                                 return h.copyWith(isOpen: val);
+                              }
                               return h;
                             }).toList();
                             clinicCtrl.updateOperatingHours(updatedList);
@@ -984,11 +1022,15 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
     ClinicDocumentModel? bpjsDoc;
 
     for (final doc in clinicCtrl.clinicDocuments) {
-      if (doc.docType == DocumentType.registration_request_letter)
+      if (doc.docType == DocumentType.registration_request_letter) {
         requestLetterDoc = doc;
-      if (doc.docType == DocumentType.quality_commitment_statement)
+      }
+      if (doc.docType == DocumentType.quality_commitment_statement) {
         qualityCommitmentDoc = doc;
-      if (doc.docType == DocumentType.bpjs_cooperation_proof) bpjsDoc = doc;
+      }
+      if (doc.docType == DocumentType.bpjs_cooperation_proof) {
+        bpjsDoc = doc;
+      }
     }
 
     return AppCard(
@@ -1141,7 +1183,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
               style: context.sBody.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           DropdownButtonFormField<EmrAppType>(
-            value: _selectedEmrType,
+            initialValue: _selectedEmrType,
             items: EmrAppType.values
                 .map((e) => DropdownMenuItem(value: e, child: Text(e.label)))
                 .toList(),
@@ -1527,7 +1569,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                 controller: nameCtrl),
             const SizedBox(height: 12),
             DropdownButtonFormField<FacilityKind>(
-              value: selectedKind,
+              initialValue: selectedKind,
               items: FacilityKind.values
                   .map((k) => DropdownMenuItem(value: k, child: Text(k.label)))
                   .toList(),
@@ -1579,7 +1621,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                 controller: nameCtrl),
             const SizedBox(height: 12),
             DropdownButtonFormField<EquipmentCategory>(
-              value: category,
+              initialValue: category,
               items: EquipmentCategory.values
                   .map((c) => DropdownMenuItem(value: c, child: Text(c.label)))
                   .toList(),

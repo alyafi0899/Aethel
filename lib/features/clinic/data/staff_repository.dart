@@ -29,10 +29,10 @@ abstract class StaffRepository {
 }
 
 class SupabaseStaffRepository implements StaffRepository {
-  SupabaseStaffRepository({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+  SupabaseStaffRepository({SupabaseClient? client}) : _customClient = client;
 
-  final SupabaseClient _client;
+  final SupabaseClient? _customClient;
+  SupabaseClient get _client => _customClient ?? Supabase.instance.client;
 
   @override
   Future<List<HealthWorkerModel>> fetchHealthWorkers(String clinicId) async {

@@ -45,7 +45,12 @@ class AuthController extends ChangeNotifier {
       }
     });
 
-    refreshProfile();
+    initSession();
+  }
+
+  /// Initializes or re-synchronizes the auth session and user profile.
+  Future<void> initSession() async {
+    await refreshProfile();
   }
 
   Future<void> refreshProfile() async {

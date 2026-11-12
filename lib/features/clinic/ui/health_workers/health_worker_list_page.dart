@@ -40,7 +40,8 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
 
     // Filter by worker type
     if (_selectedTypeFilter != null) {
-      workers = workers.where((w) => w.workerType == _selectedTypeFilter).toList();
+      workers =
+          workers.where((w) => w.workerType == _selectedTypeFilter).toList();
     }
 
     return SingleChildScrollView(
@@ -55,7 +56,9 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Tenaga Kesehatan Klinik', style: context.sH2),
-                  Text('Manajemen dokter, perawat, penanggung jawab, status tugas, serta STR/SIP.', style: context.sSmall),
+                  Text(
+                      'Manajemen dokter, perawat, penanggung jawab, status tugas, serta STR/SIP.',
+                      style: context.sSmall),
                 ],
               ),
               AppButton(
@@ -81,7 +84,8 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
                 Expanded(
                   child: TextField(
                     decoration: const InputDecoration(
-                      hintText: 'Cari nama, spesialisasi, atau nomor STR/SIP...',
+                      hintText:
+                          'Cari nama, spesialisasi, atau nomor STR/SIP...',
                       prefixIcon: Icon(Icons.search),
                       border: OutlineInputBorder(),
                     ),
@@ -93,7 +97,8 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
                   value: _selectedTypeFilter,
                   hint: const Text('Semua Jenis'),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('Semua Jenis')),
+                    const DropdownMenuItem(
+                        value: null, child: Text('Semua Jenis')),
                     ...HealthWorkerType.values.map(
                       (t) => DropdownMenuItem(value: t, child: Text(t.label)),
                     ),
@@ -111,23 +116,29 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
               child: Center(
                 child: Column(
                   children: [
-                    const Icon(Icons.person_search_outlined, size: 48, color: Colors.grey),
+                    const Icon(Icons.person_search_outlined,
+                        size: 48, color: Colors.grey),
                     const SizedBox(height: 12),
-                    Text('Tidak ada data tenaga kesehatan yang sesuai.', style: context.sBody.copyWith(fontWeight: FontWeight.bold)),
+                    Text('Tidak ada data tenaga kesehatan yang sesuai.',
+                        style: context.sBody
+                            .copyWith(fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
             )
           else
             Column(
-              children: workers.map((worker) => _workerCard(context, worker, clinicId)).toList(),
+              children: workers
+                  .map((worker) => _workerCard(context, worker, clinicId))
+                  .toList(),
             ),
         ],
       ),
     );
   }
 
-  Widget _workerCard(BuildContext context, HealthWorkerModel worker, String clinicId) {
+  Widget _workerCard(
+      BuildContext context, HealthWorkerModel worker, String clinicId) {
     final clinicCtrl = context.read<ClinicController>();
 
     final String initials = worker.fullName.isNotEmpty
@@ -153,7 +164,9 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
                     initials,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: worker.workerType == HealthWorkerType.doctor ? Colors.blue.shade800 : Colors.teal.shade800,
+                      color: worker.workerType == HealthWorkerType.doctor
+                          ? Colors.blue.shade800
+                          : Colors.teal.shade800,
                     ),
                   ),
                 ),
@@ -165,34 +178,59 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
                       Row(
                         children: [
                           Text(
-                            '${worker.titleDegree ?? ''} ${worker.fullName}'.trim(),
-                            style: context.sBody.copyWith(fontWeight: FontWeight.bold, fontSize: 16),
+                            '${worker.titleDegree ?? ''} ${worker.fullName}'
+                                .trim(),
+                            style: context.sBody.copyWith(
+                                fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                           if (worker.isPersonInCharge) ...[
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.blue.shade800,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 'Penanggung Jawab',
-                                style: context.sLabel.copyWith(color: Colors.white, fontSize: 10),
+                                style: context.sLabel.copyWith(
+                                    color: Colors.white, fontSize: 10),
                               ),
                             ),
                           ],
                           if (!worker.isActive) ...[
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.grey,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 'Nonaktif',
-                                style: context.sLabel.copyWith(color: Colors.white, fontSize: 10),
+                                style: context.sLabel.copyWith(
+                                    color: Colors.white, fontSize: 10),
+                              ),
+                            ),
+                          ],
+                          if (worker.workerType == HealthWorkerType.doctor &&
+                              worker.documents.every((d) =>
+                                  d.docType !=
+                                  WorkerDocumentType.profile_photo)) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade900,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Butuh Pasfoto Formal',
+                                style: context.sLabel.copyWith(
+                                    color: Colors.white, fontSize: 10),
                               ),
                             ),
                           ],
@@ -228,7 +266,9 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
                             size: 10,
                             color: s == DutyStatus.available
                                 ? Colors.green
-                                : (s == DutyStatus.busy ? Colors.orange : Colors.grey),
+                                : (s == DutyStatus.busy
+                                    ? Colors.orange
+                                    : Colors.grey),
                           ),
                           const SizedBox(width: 6),
                           Text(s.label, style: const TextStyle(fontSize: 12)),
@@ -238,7 +278,8 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
                   }).toList(),
                   onChanged: (newStatus) {
                     if (newStatus != null) {
-                      clinicCtrl.updateHealthWorkerDutyStatus(worker.id, newStatus);
+                      clinicCtrl.updateHealthWorkerDutyStatus(
+                          worker.id, newStatus);
                     }
                   },
                 ),
@@ -253,11 +294,12 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
                 Wrap(
                   spacing: 8,
                   children: [
-                    _expiryBadge('STR', worker.strNumber, worker.strExpiry, worker.isStrExpired, worker.isStrExpiringSoon),
-                    _expiryBadge('SIP', worker.sipNumber, worker.sipExpiry, worker.isSipExpired, worker.isSipExpiringSoon),
+                    _expiryBadge('STR', worker.strNumber, worker.strExpiry,
+                        worker.isStrExpired, worker.isStrExpiringSoon),
+                    _expiryBadge('SIP', worker.sipNumber, worker.sipExpiry,
+                        worker.isSipExpired, worker.isSipExpiringSoon),
                   ],
                 ),
-
                 Row(
                   children: [
                     Switch(
@@ -267,9 +309,9 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
                       },
                     ),
                     const SizedBox(width: 4),
-                    Text(worker.isActive ? 'Aktif' : 'Nonaktif', style: context.sSmall.copyWith(fontSize: 12)),
+                    Text(worker.isActive ? 'Aktif' : 'Nonaktif',
+                        style: context.sSmall.copyWith(fontSize: 12)),
                     const SizedBox(width: 12),
-
                     IconButton(
                       icon: const Icon(Icons.edit_outlined),
                       tooltip: 'Ubah Data',
@@ -293,7 +335,8 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
     );
   }
 
-  Widget _expiryBadge(String type, String? number, DateTime? expiry, bool isExpired, bool isExpiringSoon) {
+  Widget _expiryBadge(String type, String? number, DateTime? expiry,
+      bool isExpired, bool isExpiringSoon) {
     Color bg = Colors.green.withValues(alpha: 0.1);
     Color fg = Colors.green.shade800;
     String statusText = 'Aktif';

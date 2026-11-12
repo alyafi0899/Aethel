@@ -38,10 +38,10 @@ abstract class DocumentRepository {
 }
 
 class SupabaseDocumentRepository implements DocumentRepository {
-  SupabaseDocumentRepository({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+  SupabaseDocumentRepository({SupabaseClient? client}) : _customClient = client;
 
-  final SupabaseClient _client;
+  final SupabaseClient? _customClient;
+  SupabaseClient get _client => _customClient ?? Supabase.instance.client;
   final _uuid = const Uuid();
   static const String _bucket = 'clinic-documents';
 

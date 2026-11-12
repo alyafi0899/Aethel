@@ -56,6 +56,9 @@ enum AppPage {
   clinicStaff('Tenaga Kesehatan', Icons.badge_outlined),
   clinicOperationsInternal('Operasional Internal', Icons.dashboard_outlined),
   clinicOperationsPublic('Tampilan Publik', Icons.public_outlined),
+  clinicReviews('Ulasan & Rating', Icons.star_outline_rounded),
+  clinicFeedback('Masukan Privat', Icons.feedback_outlined),
+  clinicCompliance('Kepatuhan & Masa Berlaku', Icons.verified_outlined),
 
   // Demo Pages
   dashboard('Dashboard', Icons.grid_view_rounded),

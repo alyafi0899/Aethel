@@ -162,6 +162,14 @@ class AvailableDoctorPublicInfo {
       specialization: json['specialization'] as String?,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'title': title,
+      'specialization': specialization,
+    };
+  }
 }
 
 class ClinicOperationsPublicModel {
@@ -223,5 +231,22 @@ class ClinicOperationsPublicModel {
           ? DateTime.tryParse(json['last_update_timestamp'] as String)
           : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'clinic_id': clinicId,
+      'clinic_name': clinicName,
+      'service_types': serviceTypes,
+      'current_queue_number': currentQueueNumber,
+      'estimated_wait_time': estimatedWaitTime,
+      'available_doctors': availableDoctors.map((d) => d.toJson()).toList(),
+      'next_available_slot': nextAvailableSlot?.toIso8601String(),
+      'clinic_status': clinicStatus,
+      'today_operational_hours': todayOperationalHours,
+      'location_coordinates': locationCoordinates,
+      'contact_number': contactNumber,
+      'last_update_timestamp': lastUpdateTimestamp?.toIso8601String(),
+    };
   }
 }

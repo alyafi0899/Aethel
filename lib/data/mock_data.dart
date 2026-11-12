@@ -471,6 +471,9 @@ abstract final class MockData {
             AppPage.clinicStaff,
             AppPage.clinicOperationsInternal,
             AppPage.clinicOperationsPublic,
+            AppPage.clinicReviews,
+            AppPage.clinicFeedback,
+            AppPage.clinicCompliance,
           ]),
           NavSection(
               'OVERVIEW (DEMO)', [AppPage.dashboard, AppPage.operations]),

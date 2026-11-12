@@ -1,23 +1,35 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../operations/data/operations_repository.dart';
 import '../../operations/models/clinic_operations_models.dart';
 import '../data/clinic_catalog_repository.dart';
 import '../data/clinic_profile_repository.dart';
+import '../data/compliance_repository.dart';
 import '../data/document_repository.dart';
+import '../data/feedback_repository.dart';
+import '../data/legal_consent_repository.dart';
+import '../data/media_repository.dart';
+import '../data/reviews_repository.dart';
 import '../data/staff_repository.dart';
 import '../models/clinic_document_model.dart';
 import '../models/clinic_emr_settings_model.dart';
 import '../models/clinic_enums.dart';
 import '../models/clinic_equipment_model.dart';
 import '../models/clinic_facility_model.dart';
+import '../models/clinic_media_model.dart';
 import '../models/clinic_medicine_model.dart';
 import '../models/clinic_model.dart';
 import '../models/clinic_operating_hours_model.dart';
 import '../models/clinic_org_structure_model.dart';
 import '../models/clinic_service_model.dart';
+import '../models/compliance_model.dart';
+import '../models/feedback_model.dart';
 import '../models/health_worker_models.dart';
+import '../models/legal_consent_model.dart';
 import '../models/onboarding_status_model.dart';
+import '../models/review_models.dart';
 
 class ClinicController extends ChangeNotifier {
   ClinicController({
@@ -26,17 +38,76 @@ class ClinicController extends ChangeNotifier {
     StaffRepository? staffRepo,
     DocumentRepository? documentRepo,
     OperationsRepository? operationsRepo,
-  })  : _profileRepo = profileRepo ?? SupabaseClinicProfileRepository(),
-        _catalogRepo = catalogRepo ?? SupabaseClinicCatalogRepository(),
-        _staffRepo = staffRepo ?? SupabaseStaffRepository(),
-        _documentRepo = documentRepo ?? SupabaseDocumentRepository(),
-        _operationsRepo = operationsRepo ?? SupabaseOperationsRepository();
+    MediaRepository? mediaRepo,
+    ComplianceRepository? complianceRepo,
+    ReviewsRepository? reviewsRepo,
+    FeedbackRepository? feedbackRepo,
+    LegalConsentRepository? legalRepo,
+  })  : _profileRepo = profileRepo ?? _defaultProfileRepo(),
+        _catalogRepo = catalogRepo ?? _defaultCatalogRepo(),
+        _staffRepo = staffRepo ?? _defaultStaffRepo(),
+        _documentRepo = documentRepo ?? _defaultDocumentRepo(),
+        _operationsRepo = operationsRepo ?? _defaultOperationsRepo(),
+        _mediaRepo = mediaRepo ?? _defaultMediaRepo(),
+        _complianceRepo = complianceRepo ?? _defaultComplianceRepo(),
+        _reviewsRepo = reviewsRepo ?? _defaultReviewsRepo(),
+        _feedbackRepo = feedbackRepo ?? _defaultFeedbackRepo(),
+        _legalRepo = legalRepo ?? _defaultLegalRepo() {
+    _startComplianceTimer();
+  }
+
+  static bool get _isSupabaseInitialized {
+    try {
+      Supabase.instance.client;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static ClinicProfileRepository _defaultProfileRepo() => _isSupabaseInitialized
+      ? SupabaseClinicProfileRepository()
+      : FakeClinicProfileRepository();
+  static ClinicCatalogRepository _defaultCatalogRepo() => _isSupabaseInitialized
+      ? SupabaseClinicCatalogRepository()
+      : FakeClinicCatalogRepository();
+  static StaffRepository _defaultStaffRepo() => _isSupabaseInitialized
+      ? SupabaseStaffRepository()
+      : FakeStaffRepository();
+  static DocumentRepository _defaultDocumentRepo() => _isSupabaseInitialized
+      ? SupabaseDocumentRepository()
+      : FakeDocumentRepository();
+  static OperationsRepository _defaultOperationsRepo() => _isSupabaseInitialized
+      ? SupabaseOperationsRepository()
+      : FakeOperationsRepository();
+  static MediaRepository _defaultMediaRepo() => _isSupabaseInitialized
+      ? SupabaseMediaRepository()
+      : FakeMediaRepository();
+  static ComplianceRepository _defaultComplianceRepo() => _isSupabaseInitialized
+      ? SupabaseComplianceRepository()
+      : FakeComplianceRepository();
+  static ReviewsRepository _defaultReviewsRepo() => _isSupabaseInitialized
+      ? SupabaseReviewsRepository()
+      : FakeReviewsRepository();
+  static FeedbackRepository _defaultFeedbackRepo() => _isSupabaseInitialized
+      ? SupabaseFeedbackRepository()
+      : FakeFeedbackRepository();
+  static LegalConsentRepository _defaultLegalRepo() => _isSupabaseInitialized
+      ? SupabaseLegalConsentRepository()
+      : FakeLegalConsentRepository();
 
   final ClinicProfileRepository _profileRepo;
   final ClinicCatalogRepository _catalogRepo;
   final StaffRepository _staffRepo;
   final DocumentRepository _documentRepo;
   final OperationsRepository _operationsRepo;
+  final MediaRepository _mediaRepo;
+  final ComplianceRepository _complianceRepo;
+  final ReviewsRepository _reviewsRepo;
+  final FeedbackRepository _feedbackRepo;
+  final LegalConsentRepository _legalRepo;
+
+  Timer? _complianceTimer;
 
   bool _loading = false;
   String? _errorMessage;
@@ -54,6 +125,13 @@ class ClinicController extends ChangeNotifier {
   List<ClinicOrgStructureModel> _orgStructure = [];
   List<HealthWorkerModel> _healthWorkers = [];
   List<ClinicDocumentModel> _clinicDocuments = [];
+  List<ClinicMediaModel> _mediaList = [];
+  ComplianceStatusModel _complianceStatus = const ComplianceStatusModel();
+  ClinicReviewStatsModel _reviewStats = const ClinicReviewStatsModel();
+  List<ClinicReviewManageModel> _reviews = [];
+  List<ClinicFeedbackPrivateModel> _feedbackList = [];
+  List<LegalConsentModel> _userConsents = [];
+
   ClinicOperationsInternalModel? _internalOperations;
   ClinicOperationsPublicModel? _publicPreview;
 
@@ -70,10 +148,30 @@ class ClinicController extends ChangeNotifier {
   List<ClinicOrgStructureModel> get orgStructure => _orgStructure;
   List<HealthWorkerModel> get healthWorkers => _healthWorkers;
   List<ClinicDocumentModel> get clinicDocuments => _clinicDocuments;
+  List<ClinicMediaModel> get mediaList => _mediaList;
+  ComplianceStatusModel get complianceStatus => _complianceStatus;
+  ClinicReviewStatsModel get reviewStats => _reviewStats;
+  List<ClinicReviewManageModel> get reviews => _reviews;
+  List<ClinicFeedbackPrivateModel> get feedbackList => _feedbackList;
+  List<LegalConsentModel> get userConsents => _userConsents;
+
   ClinicOperationsInternalModel? get internalOperations => _internalOperations;
   ClinicOperationsPublicModel? get publicPreview => _publicPreview;
 
   String? get clinicId => _clinic?.id;
+
+  int get unreadFeedbackCount =>
+      _feedbackList.where((f) => f.status == FeedbackStatus.newStatus).length;
+  int get openAlertsCount => _complianceStatus.alerts.length;
+
+  void _startComplianceTimer() {
+    _complianceTimer?.cancel();
+    if (_isSupabaseInitialized) {
+      _complianceTimer = Timer.periodic(const Duration(hours: 6), (_) {
+        refreshCompliance();
+      });
+    }
+  }
 
   Future<void> loadClinicForUser(String userId) async {
     _loading = true;
@@ -84,6 +182,7 @@ class ClinicController extends ChangeNotifier {
       final fetchedClinic = await _profileRepo.fetchClinicByOwnerId(userId);
       if (fetchedClinic != null) {
         await loadClinicData(fetchedClinic.id);
+        await loadUserConsents(userId);
       } else {
         _clinic = null;
       }
@@ -112,8 +211,14 @@ class ClinicController extends ChangeNotifier {
       _orgStructure = await _profileRepo.fetchOrgStructure(id);
       _healthWorkers = await _staffRepo.fetchHealthWorkers(id);
       _clinicDocuments = await _documentRepo.fetchClinicDocuments(id);
+      _mediaList = await _mediaRepo.fetchMedia(id);
+
+      await refreshCompliance();
 
       try {
+        _reviewStats = await _reviewsRepo.fetchReviewStats(id);
+        _reviews = await _reviewsRepo.fetchReviewsManage(clinicId: id);
+        _feedbackList = await _feedbackRepo.fetchPrivateFeedback(clinicId: id);
         _internalOperations = await _operationsRepo.fetchInternalOperations(id);
         _publicPreview = await _operationsRepo.fetchPublicPreview(id);
       } catch (_) {}
@@ -123,6 +228,135 @@ class ClinicController extends ChangeNotifier {
 
     _loading = false;
     notifyListeners();
+  }
+
+  Future<void> refreshCompliance() async {
+    if (clinicId == null) return;
+    try {
+      _complianceStatus =
+          await _complianceRepo.fetchComplianceStatus(clinicId!);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> loadUserConsents(String userId) async {
+    try {
+      _userConsents = await _legalRepo.fetchUserConsents(userId);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<bool> recordLegalConsents(String userId) async {
+    try {
+      await _legalRepo.recordConsents(userId: userId, version: kLegalVersion);
+      await loadUserConsents(userId);
+      return true;
+    } catch (e) {
+      _errorMessage = ErrorMapper.mapError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> refreshMedia() async {
+    if (clinicId == null) return false;
+    try {
+      _mediaList = await _mediaRepo.fetchMedia(clinicId!);
+      await refreshOnboardingStatus();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = ErrorMapper.mapError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> refreshReviews() async {
+    if (clinicId == null) return false;
+    try {
+      _reviewStats = await _reviewsRepo.fetchReviewStats(clinicId!);
+      _reviews = await _reviewsRepo.fetchReviewsManage(clinicId: clinicId!);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = ErrorMapper.mapError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> replyToReview(
+      {required String reviewId, required String body}) async {
+    if (clinicId == null) return false;
+    try {
+      await _reviewsRepo.replyToReview(
+          reviewId: reviewId, clinicId: clinicId!, body: body);
+      await refreshReviews();
+      return true;
+    } catch (e) {
+      _errorMessage = ErrorMapper.mapError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> reportReview({
+    required String reviewId,
+    required ReportReason reason,
+    String? details,
+  }) async {
+    if (clinicId == null) return false;
+    try {
+      await _reviewsRepo.reportReview(
+        reviewId: reviewId,
+        clinicId: clinicId!,
+        reason: reason,
+        details: details,
+      );
+      await refreshReviews();
+      return true;
+    } catch (e) {
+      _errorMessage = ErrorMapper.mapError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> refreshFeedback() async {
+    if (clinicId == null) return false;
+    try {
+      _feedbackList =
+          await _feedbackRepo.fetchPrivateFeedback(clinicId: clinicId!);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = ErrorMapper.mapError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateFeedbackStatus({
+    required String feedbackId,
+    required FeedbackStatus status,
+    String? internalNote,
+  }) async {
+    if (clinicId == null) return false;
+    try {
+      await _feedbackRepo.updateFeedbackStatusAndNote(
+        feedbackId: feedbackId,
+        clinicId: clinicId!,
+        status: status,
+        internalNote: internalNote,
+      );
+      await refreshFeedback();
+      return true;
+    } catch (e) {
+      _errorMessage = ErrorMapper.mapError(e);
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> refreshOnboardingStatus() async {
@@ -142,6 +376,7 @@ class ClinicController extends ChangeNotifier {
     try {
       _clinic = await _profileRepo.updateClinicBasicData(updated);
       await refreshOnboardingStatus();
+      await refreshCompliance();
       _loading = false;
       notifyListeners();
       return true;
@@ -378,6 +613,7 @@ class ClinicController extends ChangeNotifier {
       );
       _healthWorkers = await _staffRepo.fetchHealthWorkers(clinicId!);
       await refreshOnboardingStatus();
+      await refreshCompliance();
       notifyListeners();
       return true;
     } catch (e) {
@@ -417,6 +653,7 @@ class ClinicController extends ChangeNotifier {
       );
       _healthWorkers = await _staffRepo.fetchHealthWorkers(clinicId!);
       await refreshOnboardingStatus();
+      await refreshCompliance();
       await refreshOperations();
       notifyListeners();
       return true;
@@ -509,5 +746,11 @@ class ClinicController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  @override
+  void dispose() {
+    _complianceTimer?.cancel();
+    super.dispose();
   }
 }
