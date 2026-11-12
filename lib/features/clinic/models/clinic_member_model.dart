@@ -18,7 +18,9 @@ class ClinicMemberModel {
       clinicId: json['clinic_id'] as String,
       userId: json['user_id'] as String,
       role: ClinicRole.fromDb(json['role'] as String?),
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
     );
   }
 

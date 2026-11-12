@@ -48,6 +48,16 @@ class UserProfile {
 
 /// Every page of the app. Add a value here + a case in `AppShell` to add a page.
 enum AppPage {
+  // KLINIK Group
+  clinicProfile('Profil Klinik', Icons.business_outlined),
+  clinicServices('Layanan & Fasilitas', Icons.medical_services_outlined),
+  clinicLegal('Administrasi & Legal', Icons.gavel_outlined),
+  clinicEmr('Sistem RME', Icons.computer_outlined),
+  clinicStaff('Tenaga Kesehatan', Icons.badge_outlined),
+  clinicOperationsInternal('Operasional Internal', Icons.dashboard_outlined),
+  clinicOperationsPublic('Tampilan Publik', Icons.public_outlined),
+
+  // Demo Pages
   dashboard('Dashboard', Icons.grid_view_rounded),
   operations('Operations Overview', Icons.monitor_heart_outlined),
   appointments('Appointments', Icons.calendar_today_outlined),

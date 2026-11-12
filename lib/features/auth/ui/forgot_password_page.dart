@@ -30,7 +30,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final authCtrl = context.read<AuthController>();
-    final success = await authCtrl.resetPasswordForEmail(_emailCtrl.text.trim());
+    final success =
+        await authCtrl.resetPasswordForEmail(_emailCtrl.text.trim());
     if (success && mounted) {
       setState(() => _sent = true);
     } else if (mounted && authCtrl.errorMessage != null) {
@@ -73,19 +74,21 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                             color: Colors.green.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.check_circle_outline, size: 36, color: Colors.green),
+                          child: const Icon(Icons.check_circle_outline,
+                              size: 36, color: Colors.green),
                         ),
                         const SizedBox(height: 16),
-                        Text('Instruksi Reset Dikirim', style: context.sH2, textAlign: TextAlign.center),
+                        Text('Instruksi Reset Dikirim',
+                            style: context.sH2, textAlign: TextAlign.center),
                         const SizedBox(height: 8),
                         Text(
                           'Tautan pemulihan kata sandi telah dikirim ke:\n${_emailCtrl.text.trim()}',
-                          style: context.sBodyMuted,
+                          style: context.sSmall,
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 24),
                         AppButton(
-                          label: 'Kembali ke Halaman Masuk',
+                          'Kembali ke Halaman Masuk',
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ],
@@ -103,24 +106,25 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 color: ClinicColors.lighten(c.accent, 0.15),
                                 borderRadius: BorderRadius.circular(14),
                               ),
-                              child: Icon(Icons.lock_reset_outlined, size: 32, color: c.accent),
+                              child: Icon(Icons.lock_reset_outlined,
+                                  size: 32, color: c.accent),
                             ),
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'Atur Ulang Kata Sandi',
-                            style: context.sH2.copyWith(fontWeight: FontWeight.bold),
+                            style: context.sH2
+                                .copyWith(fontWeight: FontWeight.bold),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'Masukkan alamat email terdaftar untuk menerima tautan pemulihan',
-                            style: context.sBodyMuted,
+                            style: context.sSmall,
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 24),
-
-                          FormField2(
+                          AppFormField(
                             label: 'Email Klinik / Pendaftar',
                             hint: 'nama@klinik.com',
                             controller: _emailCtrl,
@@ -128,10 +132,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                             keyboardType: TextInputType.emailAddress,
                           ),
                           const SizedBox(height: 24),
-
                           AppButton(
-                            label: 'Kirim Tautan Pemulihan',
+                            'Kirim Tautan Pemulihan',
                             icon: Icons.send_outlined,
+                            kind: BtnKind.primary,
                             loading: authCtrl.loading,
                             onPressed: _submit,
                           ),

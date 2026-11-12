@@ -11,16 +11,19 @@ abstract class ClinicProfileRepository {
   Future<ClinicModel> updateClinicBasicData(ClinicModel clinic);
   Future<OnboardingStatusModel> getOnboardingStatus(String clinicId);
   Future<OnboardingStatusModel> submitClinicForReview(String clinicId);
-  Future<void> setClinicPublished({required String clinicId, required bool published});
+  Future<void> setClinicPublished(
+      {required String clinicId, required bool published});
   Future<void> saveIntegrationSecret({
     required String clinicId,
     required String provider,
     required String secret,
   });
   Future<ClinicEmrSettingsModel> fetchEmrSettings(String clinicId);
-  Future<ClinicEmrSettingsModel> updateEmrSettings(ClinicEmrSettingsModel settings);
+  Future<ClinicEmrSettingsModel> updateEmrSettings(
+      ClinicEmrSettingsModel settings);
   Future<List<ClinicOrgStructureModel>> fetchOrgStructure(String clinicId);
-  Future<ClinicOrgStructureModel> saveOrgStructureNode(ClinicOrgStructureModel node);
+  Future<ClinicOrgStructureModel> saveOrgStructureNode(
+      ClinicOrgStructureModel node);
   Future<void> deleteOrgStructureNode(String nodeId);
 }
 
@@ -32,11 +35,8 @@ class SupabaseClinicProfileRepository implements ClinicProfileRepository {
 
   @override
   Future<ClinicModel?> fetchClinicById(String clinicId) async {
-    final res = await _client
-        .from('clinics')
-        .select()
-        .eq('id', clinicId)
-        .maybeSingle();
+    final res =
+        await _client.from('clinics').select().eq('id', clinicId).maybeSingle();
     if (res == null) return null;
     return ClinicModel.fromJson(res);
   }

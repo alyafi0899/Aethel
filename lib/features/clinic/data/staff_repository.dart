@@ -4,7 +4,8 @@ import '../models/health_worker_models.dart';
 
 abstract class StaffRepository {
   Future<List<HealthWorkerModel>> fetchHealthWorkers(String clinicId);
-  Future<HealthWorkerModel?> fetchHealthWorkerById(String workerId, String clinicId);
+  Future<HealthWorkerModel?> fetchHealthWorkerById(
+      String workerId, String clinicId);
   Future<HealthWorkerModel> saveHealthWorker({
     required HealthWorkerModel worker,
     HealthWorkerPrivateModel? privateData,
@@ -57,19 +58,14 @@ class SupabaseStaffRepository implements StaffRepository {
   @override
   Future<HealthWorkerModel?> fetchHealthWorkerById(
       String workerId, String clinicId) async {
-    final res = await _client
-        .from('health_workers')
-        .select('''
+    final res = await _client.from('health_workers').select('''
           *,
           health_worker_private (*),
           health_worker_educations (*),
           health_worker_experiences (*),
           health_worker_certificates (*),
           health_worker_documents (*)
-        ''')
-        .eq('id', workerId)
-        .eq('clinic_id', clinicId)
-        .maybeSingle();
+        ''').eq('id', workerId).eq('clinic_id', clinicId).maybeSingle();
 
     if (res == null) return null;
     return HealthWorkerModel.fromJson(res);
@@ -85,10 +81,8 @@ class SupabaseStaffRepository implements StaffRepository {
 
     // 1. If person in charge is true, reset any previous person in charge in this clinic first
     if (worker.isPersonInCharge) {
-      await _client
-          .from('health_workers')
-          .update({'is_person_in_charge': false})
-          .eq('clinic_id', worker.clinicId);
+      await _client.from('health_workers').update(
+          {'is_person_in_charge': false}).eq('clinic_id', worker.clinicId);
     }
 
     // 2. Upsert health worker main record

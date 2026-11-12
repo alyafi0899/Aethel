@@ -1,9 +1,8 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/theme/context_ext.dart';
 import '../../../shell/app_shell.dart';
-
 import '../../../widgets/buttons.dart';
 import '../../clinic/models/clinic_enums.dart';
 import '../../clinic/state/clinic_controller.dart';
@@ -48,7 +47,8 @@ class _AuthGateState extends State<AuthGate> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.no_accounts_outlined, size: 64, color: Colors.orange),
+                const Icon(Icons.no_accounts_outlined,
+                    size: 64, color: Colors.orange),
                 const SizedBox(height: 16),
                 Text(
                   'Akun Ini Bukan Akun Pengelola Klinik',
@@ -58,12 +58,12 @@ class _AuthGateState extends State<AuthGate> {
                 const SizedBox(height: 8),
                 Text(
                   'Akun dengan email (${profile.fullName ?? authCtrl.user?.email}) terdaftar sebagai tipe "${profile.accountType}". Tahap ini khusus untuk pengelola klinik.',
-                  style: context.sBodyMuted,
+                  style: context.sSmall,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
                 AppButton(
-                  label: 'Keluar Akun',
+                  'Keluar Akun',
                   icon: Icons.logout,
                   onPressed: () => authCtrl.signOut(),
                 ),
@@ -102,8 +102,9 @@ class _AuthGateState extends State<AuthGate> {
                 Text('Data Klinik Tidak Ditemukan', style: context.sH2),
                 const SizedBox(height: 8),
                 Text(
-                  clinicCtrl.errorMessage ?? 'Tidak dapat menemukan data pendaftaran klinik untuk akun ini.',
-                  style: context.sBodyMuted,
+                  clinicCtrl.errorMessage ??
+                      'Tidak dapat menemukan data pendaftaran klinik untuk akun ini.',
+                  style: context.sSmall,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
@@ -111,7 +112,7 @@ class _AuthGateState extends State<AuthGate> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     AppButton(
-                      label: 'Coba Lagi',
+                      'Coba Lagi',
                       icon: Icons.refresh,
                       onPressed: () {
                         if (uid != null) {
@@ -121,8 +122,8 @@ class _AuthGateState extends State<AuthGate> {
                     ),
                     const SizedBox(width: 12),
                     AppButton(
-                      label: 'Keluar',
-                      variant: AppButtonVariant.secondary,
+                      'Keluar',
+                      kind: BtnKind.secondary,
                       onPressed: () => authCtrl.signOut(),
                     ),
                   ],
@@ -141,7 +142,8 @@ class _AuthGateState extends State<AuthGate> {
       case ClinicStatus.draft:
       case ClinicStatus.rejected:
         return OnboardingWizardPage(
-          rejectionReason: status == ClinicStatus.rejected ? clinic.rejectionReason : null,
+          rejectionReason:
+              status == ClinicStatus.rejected ? clinic.rejectionReason : null,
         );
       case ClinicStatus.submitted:
       case ClinicStatus.under_review:
@@ -162,12 +164,12 @@ class _AuthGateState extends State<AuthGate> {
                   const SizedBox(height: 8),
                   Text(
                     'Pendaftaran operasional klinik ini telah ditangguhkan oleh administrator platform. Silakan hubungi dukungan Prometheon Clinic OS.',
-                    style: context.sBodyMuted,
+                    style: context.sSmall,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
                   AppButton(
-                    label: 'Keluar Akun',
+                    'Keluar Akun',
                     icon: Icons.logout,
                     onPressed: () => authCtrl.signOut(),
                   ),
@@ -230,7 +232,7 @@ class _BrandSplashScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               message,
-              style: context.sBodyMuted.copyWith(fontSize: 12),
+              style: context.sSmall.copyWith(fontSize: 12),
             ),
           ],
         ),

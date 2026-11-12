@@ -201,7 +201,8 @@ class ClinicController extends ChangeNotifier {
   Future<bool> saveEquipment(ClinicEquipmentModel equipmentItem) async {
     if (clinicId == null) return false;
     try {
-      await _catalogRepo.saveEquipment(equipmentItem.copyWith(clinicId: clinicId));
+      await _catalogRepo
+          .saveEquipment(equipmentItem.copyWith(clinicId: clinicId));
       _equipment = await _catalogRepo.fetchEquipment(clinicId!);
       await refreshOnboardingStatus();
       notifyListeners();
@@ -270,7 +271,8 @@ class ClinicController extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateOperatingHours(List<ClinicOperatingHoursModel> hours) async {
+  Future<bool> updateOperatingHours(
+      List<ClinicOperatingHoursModel> hours) async {
     if (clinicId == null) return false;
     try {
       await _catalogRepo.updateOperatingHours(hours);
@@ -303,7 +305,8 @@ class ClinicController extends ChangeNotifier {
   Future<bool> saveOrgStructureNode(ClinicOrgStructureModel node) async {
     if (clinicId == null) return false;
     try {
-      await _profileRepo.saveOrgStructureNode(node.copyWith(clinicId: clinicId));
+      await _profileRepo
+          .saveOrgStructureNode(node.copyWith(clinicId: clinicId));
       _orgStructure = await _profileRepo.fetchOrgStructure(clinicId!);
       await refreshOnboardingStatus();
       notifyListeners();
@@ -333,7 +336,8 @@ class ClinicController extends ChangeNotifier {
   Future<bool> updateEmrSettings(ClinicEmrSettingsModel settings) async {
     if (clinicId == null) return false;
     try {
-      _emrSettings = await _profileRepo.updateEmrSettings(settings.copyWith(clinicId: clinicId));
+      _emrSettings = await _profileRepo
+          .updateEmrSettings(settings.copyWith(clinicId: clinicId));
       await refreshOnboardingStatus();
       notifyListeners();
       return true;
@@ -478,7 +482,8 @@ class ClinicController extends ChangeNotifier {
     if (clinicId == null) return false;
     try {
       await _operationsRepo.refreshClinicOperations(clinicId!);
-      _internalOperations = await _operationsRepo.fetchInternalOperations(clinicId!);
+      _internalOperations =
+          await _operationsRepo.fetchInternalOperations(clinicId!);
       _publicPreview = await _operationsRepo.fetchPublicPreview(clinicId!);
       notifyListeners();
       return true;

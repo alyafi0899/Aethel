@@ -24,8 +24,12 @@ class ClinicServiceModel {
       serviceType: json['service_type'] as String,
       description: json['description'] as String?,
       isActive: (json['is_active'] as bool?) ?? true,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 

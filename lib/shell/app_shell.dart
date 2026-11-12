@@ -4,6 +4,10 @@ import 'package:provider/provider.dart';
 import '../core/responsive.dart';
 import '../core/theme/context_ext.dart';
 import '../data/models.dart';
+import '../features/clinic/ui/health_workers/health_worker_list_page.dart';
+import '../features/clinic/ui/onboarding_wizard_page.dart';
+import '../features/operations/ui/internal_operations_page.dart';
+import '../features/operations/ui/public_operations_page.dart';
 import '../pages/appointments_page.dart';
 import '../pages/consultations_page.dart';
 import '../pages/dashboard_page.dart';
@@ -17,7 +21,6 @@ import '../pages/permissions_page.dart';
 import '../pages/placeholder_page.dart';
 import '../pages/reports_page.dart';
 import '../pages/resources_page.dart';
-import '../pages/login_page.dart';
 import '../pages/services_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/triage_page.dart';
@@ -32,10 +35,6 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = context.watch<AppController>();
-
-    if (!ctrl.isLoggedIn) {
-      return const LoginPage();
-    }
 
     if (ctrl.loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -99,6 +98,20 @@ class _PageBody extends StatelessWidget {
 
   Widget _page() {
     switch (page) {
+      // KLINIK Group
+      case AppPage.clinicProfile:
+      case AppPage.clinicServices:
+      case AppPage.clinicLegal:
+      case AppPage.clinicEmr:
+        return const OnboardingWizardPage();
+      case AppPage.clinicStaff:
+        return const HealthWorkerListPage();
+      case AppPage.clinicOperationsInternal:
+        return const InternalOperationsPage();
+      case AppPage.clinicOperationsPublic:
+        return const PublicOperationsPage();
+
+      // Demo Pages
       case AppPage.dashboard:
         return const DashboardPage();
       case AppPage.operations:

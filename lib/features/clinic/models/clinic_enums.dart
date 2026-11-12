@@ -110,10 +110,13 @@ enum EquipmentCategory {
 enum DocumentType {
   sio('sio', 'Surat Izin Operasional (SIO)'),
   npwp('npwp', 'NPWP Klinik'),
-  fasyankes_registration('fasyankes_registration', 'Bukti Registrasi Fasyankes'),
+  fasyankes_registration(
+      'fasyankes_registration', 'Bukti Registrasi Fasyankes'),
   deed_of_establishment('deed_of_establishment', 'Akta Pendirian (PT/Yayasan)'),
-  registration_request_letter('registration_request_letter', 'Surat Permohonan Registrasi'),
-  quality_commitment_statement('quality_commitment_statement', 'Surat Komitmen Mutu'),
+  registration_request_letter(
+      'registration_request_letter', 'Surat Permohonan Registrasi'),
+  quality_commitment_statement(
+      'quality_commitment_statement', 'Surat Komitmen Mutu'),
   bpjs_cooperation_proof('bpjs_cooperation_proof', 'Bukti Kerjasama BPJS'),
   org_structure('org_structure', 'Dokumen Struktur Organisasi'),
   service_sop('service_sop', 'SOP Layanan Klinik'),
@@ -139,7 +142,8 @@ enum WorkerDocumentType {
   str_scan('str_scan', 'Scan STR Aktif'),
   sip_scan('sip_scan', 'Scan SIP Aktif'),
   diploma_scan('diploma_scan', 'Scan Ijazah Kedokteran/Keperawatan'),
-  competency_certificate_scan('competency_certificate_scan', 'Sertifikat Kompetensi'),
+  competency_certificate_scan(
+      'competency_certificate_scan', 'Sertifikat Kompetensi'),
   other('other', 'Dokumen Lain');
 
   const WorkerDocumentType(this.dbValue, this.label);

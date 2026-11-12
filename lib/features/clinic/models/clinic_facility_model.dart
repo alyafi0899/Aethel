@@ -35,8 +35,12 @@ class ClinicFacilityModel {
       capacity: (json['capacity'] as num?)?.toInt(),
       status: FacilityUnitStatus.fromDb(json['status'] as String?),
       notes: json['notes'] as String?,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 

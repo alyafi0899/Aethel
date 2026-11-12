@@ -10,7 +10,8 @@ abstract class ClinicCatalogRepository {
   Future<List<ClinicServiceModel>> fetchServices(String clinicId);
   Future<ClinicServiceModel> saveService(ClinicServiceModel service);
   Future<void> deleteService(String id);
-  Future<void> toggleServiceCategories(String clinicId, List<String> activeCategories);
+  Future<void> toggleServiceCategories(
+      String clinicId, List<String> activeCategories);
 
   // Facilities
   Future<List<ClinicFacilityModel>> fetchFacilities(String clinicId);
@@ -31,7 +32,8 @@ abstract class ClinicCatalogRepository {
   // Operating Hours
   Future<List<ClinicOperatingHoursModel>> fetchOperatingHours(String clinicId);
   Future<void> updateOperatingHours(List<ClinicOperatingHoursModel> hours);
-  Future<void> copyHoursToWeekdays(String clinicId, ClinicOperatingHoursModel source);
+  Future<void> copyHoursToWeekdays(
+      String clinicId, ClinicOperatingHoursModel source);
 }
 
 class SupabaseClinicCatalogRepository implements ClinicCatalogRepository {
@@ -78,7 +80,8 @@ class SupabaseClinicCatalogRepository implements ClinicCatalogRepository {
     for (final cat in activeCategories) {
       if (!existingMap.containsKey(cat)) {
         await saveService(
-          ClinicServiceModel(id: '', clinicId: clinicId, serviceType: cat, isActive: true),
+          ClinicServiceModel(
+              id: '', clinicId: clinicId, serviceType: cat, isActive: true),
         );
       } else if (!existingMap[cat]!.isActive) {
         await saveService(existingMap[cat]!.copyWith(isActive: true));
@@ -216,7 +219,8 @@ class SupabaseClinicCatalogRepository implements ClinicCatalogRepository {
         .eq('clinic_id', clinicId)
         .order('day_of_week', ascending: true);
     return (res as List)
-        .map((e) => ClinicOperatingHoursModel.fromJson(e as Map<String, dynamic>))
+        .map((e) =>
+            ClinicOperatingHoursModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
@@ -288,7 +292,8 @@ class FakeClinicCatalogRepository implements ClinicCatalogRepository {
   Future<void> toggleServiceCategories(
       String clinicId, List<String> activeCategories) async {
     services = activeCategories
-        .map((cat) => ClinicServiceModel(id: cat, clinicId: clinicId, serviceType: cat, isActive: true))
+        .map((cat) => ClinicServiceModel(
+            id: cat, clinicId: clinicId, serviceType: cat, isActive: true))
         .toList();
   }
 
@@ -298,7 +303,8 @@ class FakeClinicCatalogRepository implements ClinicCatalogRepository {
 
   @override
   Future<ClinicFacilityModel> saveFacility(ClinicFacilityModel facility) async {
-    facilities.removeWhere((f) => f.id == facility.id && facility.id.isNotEmpty);
+    facilities
+        .removeWhere((f) => f.id == facility.id && facility.id.isNotEmpty);
     facilities.add(facility);
     return facility;
   }
@@ -315,7 +321,8 @@ class FakeClinicCatalogRepository implements ClinicCatalogRepository {
   @override
   Future<ClinicEquipmentModel> saveEquipment(
       ClinicEquipmentModel equipmentItem) async {
-    equipment.removeWhere((e) => e.id == equipmentItem.id && equipmentItem.id.isNotEmpty);
+    equipment.removeWhere(
+        (e) => e.id == equipmentItem.id && equipmentItem.id.isNotEmpty);
     equipment.add(equipmentItem);
     return equipmentItem;
   }

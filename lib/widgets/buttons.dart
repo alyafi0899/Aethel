@@ -14,6 +14,7 @@ class AppButton extends StatelessWidget {
     this.onPressed,
     this.kind = BtnKind.secondary,
     this.compact = false,
+    this.loading = false,
   });
 
   final String label;
@@ -22,6 +23,7 @@ class AppButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final BtnKind kind;
   final bool compact;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +54,7 @@ class AppButton extends StatelessWidget {
     final radius = BorderRadius.circular(context.m.radiusSm);
 
     return Opacity(
-      opacity: onPressed == null ? .5 : 1,
+      opacity: (onPressed == null || loading) ? .6 : 1,
       child: Material(
         color: bg,
         shape: RoundedRectangleBorder(
@@ -60,7 +62,7 @@ class AppButton extends StatelessWidget {
           side: BorderSide(color: border),
         ),
         child: InkWell(
-          onTap: onPressed,
+          onTap: loading ? null : onPressed,
           borderRadius: radius,
           hoverColor: kind == BtnKind.primary ? c.primaryDark : null,
           child: Container(
@@ -70,7 +72,14 @@ class AppButton extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (icon != null) ...[
+                if (loading) ...[
+                  SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: fg),
+                  ),
+                  const SizedBox(width: 8),
+                ] else if (icon != null) ...[
                   Icon(icon, size: 16, color: fg),
                   const SizedBox(width: 7),
                 ],
@@ -79,7 +88,7 @@ class AppButton extends StatelessWidget {
                   maxLines: 1,
                   style: context.tt.labelMedium!.copyWith(color: fg),
                 ),
-                if (trailingIcon != null) ...[
+                if (!loading && trailingIcon != null) ...[
                   const SizedBox(width: 7),
                   Icon(trailingIcon, size: 14, color: fg),
                 ],

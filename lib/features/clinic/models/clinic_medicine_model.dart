@@ -30,8 +30,12 @@ class ClinicMedicineModel {
       strength: json['strength'] as String?,
       isAvailable: (json['is_available'] as bool?) ?? true,
       notes: json['notes'] as String?,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 

@@ -30,8 +30,12 @@ class ClinicOrgStructureModel {
       healthWorkerId: json['health_worker_id'] as String?,
       parentId: json['parent_id'] as String?,
       sortOrder: (json['sort_order'] as num?)?.toInt() ?? 0,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 

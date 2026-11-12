@@ -71,7 +71,8 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
     if (!_agreeTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Anda harus menyetujui Syarat & Ketentuan Pendaftaran Klinik.'),
+          content: Text(
+              'Anda harus menyetujui Syarat & Ketentuan Pendaftaran Klinik.'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -102,12 +103,14 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
   Future<void> _resendEmail() async {
     if (_resendCooldown > 0) return;
     final authCtrl = context.read<AuthController>();
-    final success = await authCtrl.resendVerificationEmail(_emailCtrl.text.trim());
+    final success =
+        await authCtrl.resendVerificationEmail(_emailCtrl.text.trim());
     if (success && mounted) {
       _startCooldownTimer();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Email konfirmasi berhasil dikirim ulang. Periksa kotak masuk Anda.'),
+          content: Text(
+              'Email konfirmasi berhasil dikirim ulang. Periksa kotak masuk Anda.'),
           backgroundColor: Colors.green,
         ),
       );
@@ -139,7 +142,8 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                         color: Colors.blue.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.mark_email_unread_outlined, size: 40, color: Colors.blue),
+                      child: const Icon(Icons.mark_email_unread_outlined,
+                          size: 40, color: Colors.blue),
                     ),
                     const SizedBox(height: 20),
                     Text(
@@ -150,7 +154,7 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                     const SizedBox(height: 12),
                     Text(
                       'Kami telah mengirimkan tautan konfirmasi pendaftaran klinik ke email:\n${_emailCtrl.text.trim()}',
-                      style: context.sBodyMuted,
+                      style: context.sSmall,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
@@ -161,17 +165,18 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                     ),
                     const SizedBox(height: 32),
                     AppButton(
-                      label: _resendCooldown > 0
+                      _resendCooldown > 0
                           ? 'Kirim Ulang ($_resendCooldown detik)'
                           : 'Kirim Ulang Email Konfirmasi',
                       icon: Icons.refresh,
-                      variant: AppButtonVariant.secondary,
+                      kind: BtnKind.secondary,
                       onPressed: _resendCooldown > 0 ? null : _resendEmail,
                     ),
                     const SizedBox(height: 12),
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: Text('Kembali ke Halaman Masuk', style: context.sBody.copyWith(color: c.accent)),
+                      child: Text('Kembali ke Halaman Masuk',
+                          style: context.sBody.copyWith(color: c.accent)),
                     ),
                   ],
                 ),
@@ -209,7 +214,8 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                         color: ClinicColors.lighten(c.accent, 0.15),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(Icons.add_business_outlined, size: 32, color: c.accent),
+                      child: Icon(Icons.add_business_outlined,
+                          size: 32, color: c.accent),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -221,11 +227,10 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                   const SizedBox(height: 4),
                   Text(
                     'Daftarkan klinik Anda untuk mengaktifkan sistem RME dan manajemen fasilitas',
-                    style: context.sBodyMuted,
+                    style: context.sSmall,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
-
                   AppCard(
                     padding: const EdgeInsets.all(24.0),
                     child: Column(
@@ -237,16 +242,19 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                             decoration: BoxDecoration(
                               color: Colors.red.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                  color: Colors.red.withValues(alpha: 0.3)),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                                const Icon(Icons.error_outline,
+                                    color: Colors.red, size: 20),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     authCtrl.errorMessage!,
-                                    style: context.sBodyMuted.copyWith(color: Colors.red, fontSize: 13),
+                                    style: context.sSmall.copyWith(
+                                        color: Colors.red, fontSize: 13),
                                   ),
                                 ),
                               ],
@@ -254,26 +262,25 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                           ),
                           const SizedBox(height: 16),
                         ],
-
-                        FormField2(
+                        AppFormField(
                           label: 'Nama Resmi Klinik',
                           hint: 'contoh: Klinik Pratama Sehat Sejahtera',
                           controller: _clinicNameCtrl,
-                          validator: (v) => AppValidators.validateRequired(v, 'Nama resmi klinik'),
+                          validator: (v) => AppValidators.validateRequired(
+                              v, 'Nama resmi klinik'),
                           textInputAction: TextInputAction.next,
                         ),
                         const SizedBox(height: 16),
-
-                        FormField2(
+                        AppFormField(
                           label: 'Nama Lengkap Pendaftar / Penanggung Jawab',
                           hint: 'contoh: dr. Ahmad Subagyo, Sp.PD',
                           controller: _fullNameCtrl,
-                          validator: (v) => AppValidators.validateRequired(v, 'Nama penanggung jawab'),
+                          validator: (v) => AppValidators.validateRequired(
+                              v, 'Nama penanggung jawab'),
                           textInputAction: TextInputAction.next,
                         ),
                         const SizedBox(height: 16),
-
-                        FormField2(
+                        AppFormField(
                           label: 'Email Resmi Klinik',
                           hint: 'info@kliniksehat.com',
                           controller: _emailCtrl,
@@ -282,8 +289,7 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                           textInputAction: TextInputAction.next,
                         ),
                         const SizedBox(height: 16),
-
-                        FormField2(
+                        AppFormField(
                           label: 'Nomor Telepon / WhatsApp Resmi',
                           hint: '081234567890',
                           controller: _phoneCtrl,
@@ -292,8 +298,7 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                           textInputAction: TextInputAction.next,
                         ),
                         const SizedBox(height: 16),
-
-                        FormField2(
+                        AppFormField(
                           label: 'Kata Sandi',
                           hint: 'Minimal 10 karakter (huruf & angka)',
                           controller: _passwordCtrl,
@@ -303,11 +308,14 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                           onChanged: (_) => setState(() {}),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                              _obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
                               size: 20,
                               color: c.muted,
                             ),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword),
                           ),
                         ),
                         if (_passwordCtrl.text.isNotEmpty) ...[
@@ -320,7 +328,9 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                                   backgroundColor: c.border,
                                   color: strength >= 0.8
                                       ? Colors.green
-                                      : (strength >= 0.4 ? Colors.orange : Colors.red),
+                                      : (strength >= 0.4
+                                          ? Colors.orange
+                                          : Colors.red),
                                   minHeight: 4,
                                   borderRadius: BorderRadius.circular(2),
                                 ),
@@ -330,36 +340,42 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                                 strength >= 0.8
                                     ? 'Kuat'
                                     : (strength >= 0.4 ? 'Sedang' : 'Lemah'),
-                                style: context.sBodyMuted.copyWith(
+                                style: context.sSmall.copyWith(
                                   fontSize: 11,
                                   color: strength >= 0.8
                                       ? Colors.green
-                                      : (strength >= 0.4 ? Colors.orange : Colors.red),
+                                      : (strength >= 0.4
+                                          ? Colors.orange
+                                          : Colors.red),
                                 ),
                               ),
                             ],
                           ),
                         ],
                         const SizedBox(height: 16),
-
-                        FormField2(
+                        AppFormField(
                           label: 'Konfirmasi Kata Sandi',
                           hint: 'Ulangi kata sandi di atas',
                           controller: _confirmPasswordCtrl,
                           obscureText: _obscureConfirmPassword,
-                          validator: (v) => AppValidators.validateConfirmPassword(v, _passwordCtrl.text),
+                          validator: (v) =>
+                              AppValidators.validateConfirmPassword(
+                                  v, _passwordCtrl.text),
                           textInputAction: TextInputAction.done,
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
                               size: 20,
                               color: c.muted,
                             ),
-                            onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                            onPressed: () => setState(() =>
+                                _obscureConfirmPassword =
+                                    !_obscureConfirmPassword),
                           ),
                         ),
                         const SizedBox(height: 16),
-
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -368,7 +384,8 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                               height: 24,
                               child: Checkbox(
                                 value: _agreeTerms,
-                                onChanged: (v) => setState(() => _agreeTerms = v ?? false),
+                                onChanged: (v) =>
+                                    setState(() => _agreeTerms = v ?? false),
                                 activeColor: c.accent,
                               ),
                             ),
@@ -376,28 +393,28 @@ class _RegisterClinicPageState extends State<RegisterClinicPage> {
                             Expanded(
                               child: Text(
                                 'Saya menyatakan bahwa data yang diisikan adalah benar dan bersedia mematuhi Syarat & Ketentuan Layanan Prometheon Clinic OS.',
-                                style: context.sBodyMuted.copyWith(fontSize: 12),
+                                style: context.sSmall.copyWith(fontSize: 12),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 24),
-
                         AppButton(
-                          label: 'Daftarkan Klinik Sekarang',
+                          'Daftarkan Klinik Sekarang',
                           icon: Icons.check_circle_outline,
+                          kind: BtnKind.primary,
                           loading: authCtrl.loading,
                           onPressed: _submit,
                         ),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Sudah memiliki akun pendaftaran?', style: context.sBodyMuted),
+                      Text('Sudah memiliki akun pendaftaran?',
+                          style: context.sSmall),
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(),
                         child: Text(

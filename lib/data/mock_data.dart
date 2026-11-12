@@ -463,8 +463,18 @@ abstract final class MockData {
         todayShort: 'Today, Jun 17',
         totalAppointments: 128,
         navSections: [
-          NavSection('OVERVIEW', [AppPage.dashboard, AppPage.operations]),
-          NavSection('CLINICAL OPERATIONS', [
+          NavSection('KLINIK', [
+            AppPage.clinicProfile,
+            AppPage.clinicServices,
+            AppPage.clinicLegal,
+            AppPage.clinicEmr,
+            AppPage.clinicStaff,
+            AppPage.clinicOperationsInternal,
+            AppPage.clinicOperationsPublic,
+          ]),
+          NavSection(
+              'OVERVIEW (DEMO)', [AppPage.dashboard, AppPage.operations]),
+          NavSection('CLINICAL OPERATIONS (DEMO)', [
             AppPage.appointments,
             AppPage.triage,
             AppPage.consultations,

@@ -1,5 +1,3 @@
-import 'clinic_enums.dart';
-
 class ProfileModel {
   const ProfileModel({
     required this.id,
@@ -25,8 +23,12 @@ class ProfileModel {
       fullName: json['full_name'] as String?,
       phone: json['phone'] as String?,
       accountType: (json['account_type'] as String?) ?? 'clinic',
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 

@@ -54,11 +54,16 @@ class OnboardingStatusModel {
   factory OnboardingStatusModel.fromJson(Map<String, dynamic> json) {
     return OnboardingStatusModel(
       status: ClinicStatus.fromDb(json['status'] as String?),
-      basicData: OnboardingSectionStatus.fromJson(json['basic_data'] as Map<String, dynamic>?),
-      servicesFacilities: OnboardingSectionStatus.fromJson(json['services_facilities'] as Map<String, dynamic>?),
-      adminLegal: OnboardingSectionStatus.fromJson(json['admin_legal'] as Map<String, dynamic>?),
-      emrSystem: OnboardingSectionStatus.fromJson(json['emr_system'] as Map<String, dynamic>?),
-      healthWorkers: OnboardingSectionStatus.fromJson(json['health_workers'] as Map<String, dynamic>?),
+      basicData: OnboardingSectionStatus.fromJson(
+          json['basic_data'] as Map<String, dynamic>?),
+      servicesFacilities: OnboardingSectionStatus.fromJson(
+          json['services_facilities'] as Map<String, dynamic>?),
+      adminLegal: OnboardingSectionStatus.fromJson(
+          json['admin_legal'] as Map<String, dynamic>?),
+      emrSystem: OnboardingSectionStatus.fromJson(
+          json['emr_system'] as Map<String, dynamic>?),
+      healthWorkers: OnboardingSectionStatus.fromJson(
+          json['health_workers'] as Map<String, dynamic>?),
       readyToSubmit: (json['ready_to_submit'] as bool?) ?? false,
     );
   }

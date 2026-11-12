@@ -33,13 +33,15 @@ class ErrorMapper {
     final code = error.code ?? '';
     final msg = error.message.toLowerCase();
 
-    if (code == 'invalid_credentials' || msg.contains('invalid login credentials')) {
+    if (code == 'invalid_credentials' ||
+        msg.contains('invalid login credentials')) {
       return 'Email atau kata sandi salah.';
     }
     if (code == 'email_not_confirmed' || msg.contains('email not confirmed')) {
       return 'Email belum dikonfirmasi. Cek kotak masuk email Anda.';
     }
-    if (code == 'weak_password' || msg.contains('password should be at least')) {
+    if (code == 'weak_password' ||
+        msg.contains('password should be at least')) {
       return 'Kata sandi terlalu lemah. Gunakan minimal 10 karakter kombinasi huruf dan angka.';
     }
     if (code == 'over_email_send_rate_limit' || msg.contains('rate limit')) {

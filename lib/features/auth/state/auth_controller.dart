@@ -32,7 +32,8 @@ class AuthController extends ChangeNotifier {
   void _init() {
     _sub = _repo.onAuthStateChange.listen((data) async {
       final event = data.event;
-      if (event == AuthChangeEvent.signedIn || event == AuthChangeEvent.tokenRefreshed) {
+      if (event == AuthChangeEvent.signedIn ||
+          event == AuthChangeEvent.tokenRefreshed) {
         await refreshProfile();
       } else if (event == AuthChangeEvent.signedOut) {
         _profile = null;

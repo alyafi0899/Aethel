@@ -7,6 +7,8 @@ import '../core/icons.dart';
 import '../core/theme/clinic_colors.dart';
 import '../core/theme/context_ext.dart';
 import '../data/models.dart';
+import '../features/auth/state/auth_controller.dart';
+import '../features/clinic/state/clinic_controller.dart';
 import '../state/app_controller.dart';
 import '../widgets/buttons.dart';
 
@@ -20,8 +22,17 @@ class Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = context.watch<AppController>();
+    final authCtrl = context.watch<AuthController>();
+    final clinicCtrl = context.watch<ClinicController>();
+
     final c = context.c;
     final data = ctrl.data;
+
+    final String clinicName =
+        clinicCtrl.clinic?.clinicName ?? data.facilityName;
+    final String roleLabel = authCtrl.membership?.role.label ??
+        authCtrl.profile?.accountType.toUpperCase() ??
+        ctrl.activeUserRole;
 
     return Container(
       width: 254,
@@ -30,8 +41,7 @@ class Sidebar extends StatelessWidget {
         child: Column(
           children: [
             _Brand(onClose: onClose),
-            _FacilityCard(
-                name: data.facilityName, roleLabel: ctrl.activeUserRole),
+            _FacilityCard(name: clinicName, roleLabel: roleLabel),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(10, 3, 10, 25),
@@ -317,7 +327,7 @@ class _HelpCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Need assistance?',
+                  'Dukungan Sistem',
                   style: context.sStrong.copyWith(
                     color: const Color(0xFFD8E3EC),
                     fontSize: 11,
@@ -325,7 +335,7 @@ class _HelpCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Contact platform support',
+                  'Bantuan Prometheon OS',
                   style: context.sSmall.copyWith(
                     color: const Color(0xFF71859A),
                     fontSize: 9.5,

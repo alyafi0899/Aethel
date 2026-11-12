@@ -26,8 +26,12 @@ class ClinicEmrSettingsModel {
       emrAppType: EmrAppType.fromDb(json['emr_app_type'] as String?),
       satusehatOrganizationId: json['satusehat_organization_id'] as String?,
       satusehatConnected: (json['satusehat_connected'] as bool?) ?? false,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 
@@ -53,7 +57,8 @@ class ClinicEmrSettingsModel {
       clinicId: clinicId ?? this.clinicId,
       emrAppName: emrAppName ?? this.emrAppName,
       emrAppType: emrAppType ?? this.emrAppType,
-      satusehatOrganizationId: satusehatOrganizationId ?? this.satusehatOrganizationId,
+      satusehatOrganizationId:
+          satusehatOrganizationId ?? this.satusehatOrganizationId,
       satusehatConnected: satusehatConnected ?? this.satusehatConnected,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

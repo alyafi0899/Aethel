@@ -51,11 +51,14 @@ class SupabaseDocumentRepository implements DocumentRepository {
 
   @override
   Future<String> getSignedUrl(String filePath, {int expiresIn = 60}) async {
-    return await _client.storage.from(_bucket).createSignedUrl(filePath, expiresIn);
+    return await _client.storage
+        .from(_bucket)
+        .createSignedUrl(filePath, expiresIn);
   }
 
   @override
-  Future<List<ClinicDocumentModel>> fetchClinicDocuments(String clinicId) async {
+  Future<List<ClinicDocumentModel>> fetchClinicDocuments(
+      String clinicId) async {
     final res = await _client
         .from('clinic_documents')
         .select()
@@ -151,7 +154,8 @@ class SupabaseDocumentRepository implements DocumentRepository {
         .order('created_at', ascending: false);
 
     final list = (res as List)
-        .map((e) => HealthWorkerDocumentModel.fromJson(e as Map<String, dynamic>))
+        .map((e) =>
+            HealthWorkerDocumentModel.fromJson(e as Map<String, dynamic>))
         .toList();
 
     final withUrls = <HealthWorkerDocumentModel>[];
@@ -177,7 +181,8 @@ class SupabaseDocumentRepository implements DocumentRepository {
   }) async {
     final cleanName = _sanitizeFileName(fileName);
     final uniqueId = _uuid.v4();
-    final path = '$clinicId/workers/$workerId/${docType.dbValue}/$uniqueId-$cleanName';
+    final path =
+        '$clinicId/workers/$workerId/${docType.dbValue}/$uniqueId-$cleanName';
 
     // 1. Upload to storage
     await _client.storage.from(_bucket).uploadBinary(
@@ -235,7 +240,8 @@ class FakeDocumentRepository implements DocumentRepository {
   }
 
   @override
-  Future<List<ClinicDocumentModel>> fetchClinicDocuments(String clinicId) async =>
+  Future<List<ClinicDocumentModel>> fetchClinicDocuments(
+          String clinicId) async =>
       clinicDocs;
 
   @override

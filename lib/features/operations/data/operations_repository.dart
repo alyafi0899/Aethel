@@ -2,7 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/clinic_operations_models.dart';
 
 abstract class OperationsRepository {
-  Future<ClinicOperationsInternalModel> fetchInternalOperations(String clinicId);
+  Future<ClinicOperationsInternalModel> fetchInternalOperations(
+      String clinicId);
   Future<ClinicOperationsInternalModel> updateInternalOperations(
       ClinicOperationsInternalModel ops);
   Future<ClinicOperationsPublicModel> fetchPublicPreview(String clinicId);
@@ -40,7 +41,8 @@ class SupabaseOperationsRepository implements OperationsRepository {
   }
 
   @override
-  Future<ClinicOperationsPublicModel> fetchPublicPreview(String clinicId) async {
+  Future<ClinicOperationsPublicModel> fetchPublicPreview(
+      String clinicId) async {
     final res = await _client.rpc(
       'clinic_public_preview',
       params: {'p_clinic_id': clinicId},
@@ -58,7 +60,8 @@ class SupabaseOperationsRepository implements OperationsRepository {
 }
 
 class FakeOperationsRepository implements OperationsRepository {
-  ClinicOperationsInternalModel internalOps = const ClinicOperationsInternalModel(
+  ClinicOperationsInternalModel internalOps =
+      const ClinicOperationsInternalModel(
     clinicId: 'c1',
     clinicName: 'Klinik Sehat Prometheon',
   );

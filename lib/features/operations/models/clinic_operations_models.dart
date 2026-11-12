@@ -51,21 +51,29 @@ class ClinicOperationsInternalModel {
       clinicName: json['clinic_name'] as String?,
       totalQueues: (json['total_queues'] as num?)?.toInt() ?? 0,
       currentQueueNumber: (json['current_queue_number'] as num?)?.toInt() ?? 0,
-      queueProcessStatus: QueueProcessStatus.fromDb(json['queue_process_status'] as String?),
+      queueProcessStatus:
+          QueueProcessStatus.fromDb(json['queue_process_status'] as String?),
       averageWaitTime: (json['average_wait_time'] as num?)?.toInt() ?? 0,
-      totalRegisteredPatients: (json['total_registered_patients'] as num?)?.toInt() ?? 0,
+      totalRegisteredPatients:
+          (json['total_registered_patients'] as num?)?.toInt() ?? 0,
       totalDailyVisitors: (json['total_daily_visitors'] as num?)?.toInt() ?? 0,
-      totalDoctorsAvailable: (json['total_doctors_available'] as num?)?.toInt() ?? 0,
+      totalDoctorsAvailable:
+          (json['total_doctors_available'] as num?)?.toInt() ?? 0,
       activeRoomsCount: (json['active_rooms_count'] as num?)?.toInt() ?? 0,
-      availableRoomsCount: (json['available_rooms_count'] as num?)?.toInt() ?? 0,
-      dailyAppointmentsCount: (json['daily_appointments_count'] as num?)?.toInt() ?? 0,
-      cancelledAppointmentsCount: (json['cancelled_appointments_count'] as num?)?.toInt() ?? 0,
+      availableRoomsCount:
+          (json['available_rooms_count'] as num?)?.toInt() ?? 0,
+      dailyAppointmentsCount:
+          (json['daily_appointments_count'] as num?)?.toInt() ?? 0,
+      cancelledAppointmentsCount:
+          (json['cancelled_appointments_count'] as num?)?.toInt() ?? 0,
       serviceTypes: json['service_types'] != null
           ? (json['service_types'] as List).map((e) => e.toString()).toList()
           : const [],
-      facilityStatus: FacilityOperatingStatus.fromDb(json['facility_status'] as String?),
+      facilityStatus:
+          FacilityOperatingStatus.fromDb(json['facility_status'] as String?),
       staffOnDutyCount: (json['staff_on_duty_count'] as num?)?.toInt() ?? 0,
-      totalCompletedConsultations: (json['total_completed_consultations'] as num?)?.toInt() ?? 0,
+      totalCompletedConsultations:
+          (json['total_completed_consultations'] as num?)?.toInt() ?? 0,
       lastUpdateTimestamp: json['last_update_timestamp'] != null
           ? DateTime.tryParse(json['last_update_timestamp'] as String)
           : null,
@@ -115,17 +123,22 @@ class ClinicOperationsInternalModel {
       currentQueueNumber: currentQueueNumber ?? this.currentQueueNumber,
       queueProcessStatus: queueProcessStatus ?? this.queueProcessStatus,
       averageWaitTime: averageWaitTime ?? this.averageWaitTime,
-      totalRegisteredPatients: totalRegisteredPatients ?? this.totalRegisteredPatients,
+      totalRegisteredPatients:
+          totalRegisteredPatients ?? this.totalRegisteredPatients,
       totalDailyVisitors: totalDailyVisitors ?? this.totalDailyVisitors,
-      totalDoctorsAvailable: totalDoctorsAvailable ?? this.totalDoctorsAvailable,
+      totalDoctorsAvailable:
+          totalDoctorsAvailable ?? this.totalDoctorsAvailable,
       activeRoomsCount: activeRoomsCount ?? this.activeRoomsCount,
       availableRoomsCount: availableRoomsCount ?? this.availableRoomsCount,
-      dailyAppointmentsCount: dailyAppointmentsCount ?? this.dailyAppointmentsCount,
-      cancelledAppointmentsCount: cancelledAppointmentsCount ?? this.cancelledAppointmentsCount,
+      dailyAppointmentsCount:
+          dailyAppointmentsCount ?? this.dailyAppointmentsCount,
+      cancelledAppointmentsCount:
+          cancelledAppointmentsCount ?? this.cancelledAppointmentsCount,
       serviceTypes: serviceTypes ?? this.serviceTypes,
       facilityStatus: facilityStatus ?? this.facilityStatus,
       staffOnDutyCount: staffOnDutyCount ?? this.staffOnDutyCount,
-      totalCompletedConsultations: totalCompletedConsultations ?? this.totalCompletedConsultations,
+      totalCompletedConsultations:
+          totalCompletedConsultations ?? this.totalCompletedConsultations,
       lastUpdateTimestamp: lastUpdateTimestamp ?? this.lastUpdateTimestamp,
     );
   }
@@ -191,7 +204,8 @@ class ClinicOperationsPublicModel {
       estimatedWaitTime: (json['estimated_wait_time'] as num?)?.toInt() ?? 0,
       availableDoctors: json['available_doctors'] != null
           ? (json['available_doctors'] as List)
-              .map((e) => AvailableDoctorPublicInfo.fromJson(e as Map<String, dynamic>))
+              .map((e) =>
+                  AvailableDoctorPublicInfo.fromJson(e as Map<String, dynamic>))
               .toList()
           : const [],
       nextAvailableSlot: json['next_available_slot'] != null

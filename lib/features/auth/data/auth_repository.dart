@@ -111,11 +111,8 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<ProfileModel?> fetchCurrentProfile() async {
     final uid = currentUser?.id;
     if (uid == null) return null;
-    final res = await _client
-        .from('profiles')
-        .select()
-        .eq('id', uid)
-        .maybeSingle();
+    final res =
+        await _client.from('profiles').select().eq('id', uid).maybeSingle();
     if (res == null) return null;
     return ProfileModel.fromJson(res);
   }

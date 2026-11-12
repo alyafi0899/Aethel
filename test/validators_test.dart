@@ -26,8 +26,10 @@ void main() {
     test('validatePassword requires 10 chars with letters and numbers', () {
       expect(AppValidators.validatePassword('Password123'), isNull);
       expect(AppValidators.validatePassword('pass123'), isNotNull); // <10 chars
-      expect(AppValidators.validatePassword('12345678901'), isNotNull); // no letters
-      expect(AppValidators.validatePassword('abcdefghijk'), isNotNull); // no numbers
+      expect(AppValidators.validatePassword('12345678901'),
+          isNotNull); // no letters
+      expect(AppValidators.validatePassword('abcdefghijk'),
+          isNotNull); // no numbers
     });
 
     test('validateNpwp and validateNik format checks', () {

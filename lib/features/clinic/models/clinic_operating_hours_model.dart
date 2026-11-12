@@ -33,7 +33,9 @@ class ClinicOperatingHoursModel {
     'Minggu',
   ];
 
-  String get dayName => (dayOfWeek >= 1 && dayOfWeek <= 7) ? dayNames[dayOfWeek - 1] : 'Hari $dayOfWeek';
+  String get dayName => (dayOfWeek >= 1 && dayOfWeek <= 7)
+      ? dayNames[dayOfWeek - 1]
+      : 'Hari $dayOfWeek';
 
   factory ClinicOperatingHoursModel.fromJson(Map<String, dynamic> json) {
     return ClinicOperatingHoursModel(
@@ -45,8 +47,12 @@ class ClinicOperatingHoursModel {
       closeTime: json['close_time'] as String?,
       breakStart: json['break_start'] as String?,
       breakEnd: json['break_end'] as String?,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 

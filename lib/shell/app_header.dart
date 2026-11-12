@@ -6,6 +6,8 @@ import '../core/responsive.dart';
 import '../core/theme/clinic_colors.dart';
 import '../core/theme/context_ext.dart';
 import '../data/models.dart';
+import '../features/auth/state/auth_controller.dart';
+import '../features/clinic/state/clinic_controller.dart';
 import '../sheets/quick_action_dialog.dart';
 import '../state/app_controller.dart';
 import '../widgets/buttons.dart';
@@ -17,8 +19,26 @@ class AppHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = context.watch<AppController>();
+    final authCtrl = context.watch<AuthController>();
+    final clinicCtrl = context.watch<ClinicController>();
+
     final desktop = Breakpoints.isDesktop(context);
     final width = MediaQuery.sizeOf(context).width;
+
+    final String displayName = authCtrl.profile?.fullName ??
+        authCtrl.user?.email ??
+        ctrl.activeUserName;
+    final String clinicName =
+        clinicCtrl.clinic?.clinicName ?? ctrl.data.facilityName;
+    final String initials = displayName.isNotEmpty
+        ? displayName
+            .trim()
+            .split(' ')
+            .map((p) => p[0])
+            .take(2)
+            .join()
+            .toUpperCase()
+        : 'KU';
 
     return Container(
       height: 72,
@@ -42,7 +62,7 @@ class AppHeader extends StatelessWidget {
                 maxWidth: width * .4 < 440 ? 440 : 440,
               ),
               child: SearchBox(
-                hint: 'Search patients, appointments, doctors...',
+                hint: 'Cari pasien, janji temu, dokter...',
                 onChanged: ctrl.setSearch,
                 trailing: desktop
                     ? Container(
@@ -67,7 +87,7 @@ class AppHeader extends StatelessWidget {
           const SizedBox(width: 12),
           if (desktop) ...[
             AppButton(
-              'Quick action',
+              'Aksi Cepat',
               icon: AppIcons.plus,
               kind: BtnKind.primary,
               onPressed: () => QuickActionDialog.show(context),
@@ -84,7 +104,7 @@ class AppHeader extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           PopupMenuButton<String>(
-            tooltip: 'User profile & session settings',
+            tooltip: 'Profil Pengguna & Sesi',
             color: context.c.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(context.m.radiusSm),
@@ -92,11 +112,7 @@ class AppHeader extends StatelessWidget {
             ),
             onSelected: (value) {
               if (value == 'logout') {
-                ctrl.logout();
-              } else if (value == 'switch_admin') {
-                ctrl.loginAsRole(UserRole.admin);
-              } else if (value == 'switch_nurse') {
-                ctrl.loginAsRole(UserRole.nurse);
+                authCtrl.signOut();
               }
             },
             itemBuilder: (ctx) => [
@@ -105,32 +121,12 @@ class AppHeader extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(ctrl.activeUserName, style: context.sStrong),
+                    Text(displayName, style: context.sStrong),
                     const SizedBox(height: 2),
-                    Text(ctrl.activeUserRole, style: context.sSmall),
+                    Text(clinicName,
+                        style:
+                            context.sSmall.copyWith(color: context.c.accent)),
                     const Divider(),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value:
-                    ctrl.currentRole.isAdmin ? 'switch_nurse' : 'switch_admin',
-                child: Row(
-                  children: [
-                    Icon(
-                      ctrl.currentRole.isAdmin
-                          ? AppIcons.nurse
-                          : AppIcons.shield,
-                      size: 16,
-                      color: context.c.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      ctrl.currentRole.isAdmin
-                          ? 'Switch to Nurse View'
-                          : 'Switch to Admin View',
-                      style: context.sBody,
-                    ),
                   ],
                 ),
               ),
@@ -142,7 +138,7 @@ class AppHeader extends StatelessWidget {
                         size: 16, color: context.c.fg(Tone.red)),
                     const SizedBox(width: 8),
                     Text(
-                      'Logout',
+                      'Keluar (Logout)',
                       style: context.sBody.copyWith(
                         color: context.c.fg(Tone.red),
                         fontWeight: FontWeight.w600,
@@ -161,17 +157,18 @@ class AppHeader extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Avatar(ctrl.activeUserInitials,
-                      tone: ctrl.currentRole.isAdmin ? Tone.navy : Tone.teal),
+                  Avatar(initials, tone: Tone.navy),
                   if (desktop) ...[
                     const SizedBox(width: 9),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(ctrl.activeUserName, style: context.sStrong),
+                        Text(displayName, style: context.sStrong),
                         const SizedBox(height: 2),
-                        Text(ctrl.activeUserRole, style: context.sSmall),
+                        Text(clinicName,
+                            style: context.sSmall
+                                .copyWith(color: context.c.accent)),
                       ],
                     ),
                     const SizedBox(width: 10),

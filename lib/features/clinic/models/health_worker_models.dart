@@ -52,14 +52,16 @@ class HealthWorkerModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  bool get isStrExpired => strExpiry != null && strExpiry!.isBefore(DateTime.now());
+  bool get isStrExpired =>
+      strExpiry != null && strExpiry!.isBefore(DateTime.now());
   bool get isStrExpiringSoon {
     if (strExpiry == null) return false;
     final diff = strExpiry!.difference(DateTime.now()).inDays;
     return diff >= 0 && diff <= 90;
   }
 
-  bool get isSipExpired => sipExpiry != null && sipExpiry!.isBefore(DateTime.now());
+  bool get isSipExpired =>
+      sipExpiry != null && sipExpiry!.isBefore(DateTime.now());
   bool get isSipExpiringSoon {
     if (sipExpiry == null) return false;
     final diff = sipExpiry!.difference(DateTime.now()).inDays;
@@ -79,34 +81,47 @@ class HealthWorkerModel {
       titleDegree: json['title_degree'] as String?,
       specialization: json['specialization'] as String?,
       strNumber: json['str_number'] as String?,
-      strExpiry: json['str_expiry'] != null ? DateTime.tryParse(json['str_expiry'] as String) : null,
+      strExpiry: json['str_expiry'] != null
+          ? DateTime.tryParse(json['str_expiry'] as String)
+          : null,
       sipNumber: json['sip_number'] as String?,
-      sipExpiry: json['sip_expiry'] != null ? DateTime.tryParse(json['sip_expiry'] as String) : null,
+      sipExpiry: json['sip_expiry'] != null
+          ? DateTime.tryParse(json['sip_expiry'] as String)
+          : null,
       privateData: json['health_worker_private'] != null
-          ? HealthWorkerPrivateModel.fromJson(json['health_worker_private'] as Map<String, dynamic>)
+          ? HealthWorkerPrivateModel.fromJson(
+              json['health_worker_private'] as Map<String, dynamic>)
           : null,
       educations: json['health_worker_educations'] != null
           ? (json['health_worker_educations'] as List)
-              .map((e) => HealthWorkerEducationModel.fromJson(e as Map<String, dynamic>))
+              .map((e) => HealthWorkerEducationModel.fromJson(
+                  e as Map<String, dynamic>))
               .toList()
           : const [],
       experiences: json['health_worker_experiences'] != null
           ? (json['health_worker_experiences'] as List)
-              .map((e) => HealthWorkerExperienceModel.fromJson(e as Map<String, dynamic>))
+              .map((e) => HealthWorkerExperienceModel.fromJson(
+                  e as Map<String, dynamic>))
               .toList()
           : const [],
       certificates: json['health_worker_certificates'] != null
           ? (json['health_worker_certificates'] as List)
-              .map((e) => HealthWorkerCertificateModel.fromJson(e as Map<String, dynamic>))
+              .map((e) => HealthWorkerCertificateModel.fromJson(
+                  e as Map<String, dynamic>))
               .toList()
           : const [],
       documents: json['health_worker_documents'] != null
           ? (json['health_worker_documents'] as List)
-              .map((e) => HealthWorkerDocumentModel.fromJson(e as Map<String, dynamic>))
+              .map((e) =>
+                  HealthWorkerDocumentModel.fromJson(e as Map<String, dynamic>))
               .toList()
           : const [],
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 
@@ -212,9 +227,15 @@ class HealthWorkerPrivateModel {
       nik: json['nik'] as String?,
       npwp: json['npwp'] as String?,
       homeAddress: json['home_address'] as String?,
-      birthDate: json['birth_date'] != null ? DateTime.tryParse(json['birth_date'] as String) : null,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      birthDate: json['birth_date'] != null
+          ? DateTime.tryParse(json['birth_date'] as String)
+          : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 
@@ -293,8 +314,12 @@ class HealthWorkerEducationModel {
       fieldOfStudy: json['field_of_study'] as String?,
       startYear: (json['start_year'] as num?)?.toInt(),
       endYear: (json['end_year'] as num?)?.toInt(),
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 
@@ -344,11 +369,19 @@ class HealthWorkerExperienceModel {
       clinicId: json['clinic_id'] as String,
       workplace: json['workplace'] as String,
       position: json['position'] as String?,
-      startDate: json['start_date'] != null ? DateTime.tryParse(json['start_date'] as String) : null,
-      endDate: json['end_date'] != null ? DateTime.tryParse(json['end_date'] as String) : null,
+      startDate: json['start_date'] != null
+          ? DateTime.tryParse(json['start_date'] as String)
+          : null,
+      endDate: json['end_date'] != null
+          ? DateTime.tryParse(json['end_date'] as String)
+          : null,
       description: json['description'] as String?,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 
@@ -398,11 +431,19 @@ class HealthWorkerCertificateModel {
       clinicId: json['clinic_id'] as String,
       name: json['name'] as String,
       issuer: json['issuer'] as String?,
-      issuedDate: json['issued_date'] != null ? DateTime.tryParse(json['issued_date'] as String) : null,
-      expiryDate: json['expiry_date'] != null ? DateTime.tryParse(json['expiry_date'] as String) : null,
+      issuedDate: json['issued_date'] != null
+          ? DateTime.tryParse(json['issued_date'] as String)
+          : null,
+      expiryDate: json['expiry_date'] != null
+          ? DateTime.tryParse(json['expiry_date'] as String)
+          : null,
       filePath: json['file_path'] as String?,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 
@@ -463,12 +504,17 @@ class HealthWorkerDocumentModel {
       fileName: json['file_name'] as String?,
       mimeType: json['mime_type'] as String?,
       sizeBytes: (json['size_bytes'] as num?)?.toInt(),
-      reviewStatus: DocumentReviewStatus.fromDb(json['review_status'] as String?),
+      reviewStatus:
+          DocumentReviewStatus.fromDb(json['review_status'] as String?),
       reviewNote: json['review_note'] as String?,
       uploadedBy: json['uploaded_by'] as String?,
       signedUrl: json['signed_url'] as String?,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 
@@ -483,5 +529,39 @@ class HealthWorkerDocumentModel {
       'mime_type': mimeType,
       'size_bytes': sizeBytes,
     };
+  }
+
+  HealthWorkerDocumentModel copyWith({
+    String? id,
+    String? workerId,
+    String? clinicId,
+    WorkerDocumentType? docType,
+    String? filePath,
+    String? fileName,
+    String? mimeType,
+    int? sizeBytes,
+    DocumentReviewStatus? reviewStatus,
+    String? reviewNote,
+    String? uploadedBy,
+    String? signedUrl,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return HealthWorkerDocumentModel(
+      id: id ?? this.id,
+      workerId: workerId ?? this.workerId,
+      clinicId: clinicId ?? this.clinicId,
+      docType: docType ?? this.docType,
+      filePath: filePath ?? this.filePath,
+      fileName: fileName ?? this.fileName,
+      mimeType: mimeType ?? this.mimeType,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
+      reviewStatus: reviewStatus ?? this.reviewStatus,
+      reviewNote: reviewNote ?? this.reviewNote,
+      uploadedBy: uploadedBy ?? this.uploadedBy,
+      signedUrl: signedUrl ?? this.signedUrl,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 }

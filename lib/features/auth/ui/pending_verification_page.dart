@@ -14,7 +14,8 @@ class PendingVerificationPage extends StatefulWidget {
   const PendingVerificationPage({super.key});
 
   @override
-  State<PendingVerificationPage> createState() => _PendingVerificationPageState();
+  State<PendingVerificationPage> createState() =>
+      _PendingVerificationPageState();
 }
 
 class _PendingVerificationPageState extends State<PendingVerificationPage> {
@@ -95,9 +96,12 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        isSubmitted ? Icons.fact_check_outlined : Icons.hourglass_top_rounded,
+                        isSubmitted
+                            ? Icons.fact_check_outlined
+                            : Icons.hourglass_top_rounded,
                         size: 40,
-                        color: isSubmitted ? Colors.blue : Colors.amber.shade800,
+                        color:
+                            isSubmitted ? Colors.blue : Colors.amber.shade800,
                       ),
                     ),
                   ),
@@ -114,11 +118,10 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                     isSubmitted
                         ? 'Tim verifikator Prometheon Clinic OS telah menerima dokumen registrasi klinik Anda.'
                         : 'Tim analis verifikasi sedang meninjau kelayakan dokumen operasional klinik Anda.',
-                    style: context.sBodyMuted,
+                    style: context.sSmall,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
-
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -131,26 +134,34 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                       children: [
                         _infoRow('Nama Klinik', clinic?.clinicName ?? '-'),
                         const Divider(height: 16),
-                        _infoRow('Bentuk Badan Hukum', clinic?.legalEntityType?.label ?? '-'),
+                        _infoRow('Bentuk Badan Hukum',
+                            clinic?.legalEntityType?.label ?? '-'),
                         const Divider(height: 16),
-                        _infoRow('Kode Fasyankes', clinic?.fasyankesCode ?? '-'),
+                        _infoRow(
+                            'Kode Fasyankes', clinic?.fasyankesCode ?? '-'),
                         const Divider(height: 16),
-                        _infoRow('Waktu Pengajuan', AppFormatters.formatDateTime(clinic?.submittedAt)),
+                        _infoRow('Waktu Pengajuan',
+                            AppFormatters.formatDateTime(clinic?.submittedAt)),
                         const Divider(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Status Pendaftaran', style: context.sBodyMuted),
+                            Text('Status Pendaftaran', style: context.sSmall),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: (isSubmitted ? Colors.blue : Colors.amber).withValues(alpha: 0.15),
+                                color:
+                                    (isSubmitted ? Colors.blue : Colors.amber)
+                                        .withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
                                 clinic?.status.label ?? 'Peninjauan',
                                 style: context.sLabel.copyWith(
-                                  color: isSubmitted ? Colors.blue.shade800 : Colors.amber.shade900,
+                                  color: isSubmitted
+                                      ? Colors.blue.shade800
+                                      : Colors.amber.shade900,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -160,15 +171,14 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 24),
                   Row(
                     children: [
                       Expanded(
                         child: AppButton(
-                          label: 'Segarkan Status',
+                          'Segarkan Status',
                           icon: Icons.refresh,
-                          variant: AppButtonVariant.primary,
+                          kind: BtnKind.primary,
                           loading: clinicCtrl.loading,
                           onPressed: _refresh,
                         ),
@@ -176,9 +186,9 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: AppButton(
-                          label: 'Keluar Akun',
+                          'Keluar Akun',
                           icon: Icons.logout,
-                          variant: AppButtonVariant.secondary,
+                          kind: BtnKind.secondary,
                           onPressed: () => authCtrl.signOut(),
                         ),
                       ),
@@ -187,7 +197,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                   const SizedBox(height: 16),
                   Text(
                     'Halaman ini akan memperbarui status secara otomatis setiap 30 detik.',
-                    style: context.sBodyMuted.copyWith(fontSize: 11),
+                    style: context.sSmall.copyWith(fontSize: 11),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -204,7 +214,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: context.sBodyMuted),
+          Text(label, style: context.sSmall),
           Flexible(
             child: Text(
               value,

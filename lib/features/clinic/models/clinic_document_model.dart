@@ -40,12 +40,17 @@ class ClinicDocumentModel {
       fileName: json['file_name'] as String?,
       mimeType: json['mime_type'] as String?,
       sizeBytes: (json['size_bytes'] as num?)?.toInt(),
-      reviewStatus: DocumentReviewStatus.fromDb(json['review_status'] as String?),
+      reviewStatus:
+          DocumentReviewStatus.fromDb(json['review_status'] as String?),
       reviewNote: json['review_note'] as String?,
       uploadedBy: json['uploaded_by'] as String?,
       signedUrl: json['signed_url'] as String?,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 

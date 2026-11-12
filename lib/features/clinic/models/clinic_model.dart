@@ -70,25 +70,40 @@ class ClinicModel {
       isPublished: (json['is_published'] as bool?) ?? false,
       onboardingStep: (json['onboarding_step'] as num?)?.toInt() ?? 1,
       clinicName: json['clinic_name'] as String?,
-      legalEntityType: LegalEntityType.fromDb(json['legal_entity_type'] as String?),
+      legalEntityType:
+          LegalEntityType.fromDb(json['legal_entity_type'] as String?),
       addressFull: json['address_full'] as String?,
-      latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
-      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
+      latitude: json['latitude'] != null
+          ? (json['latitude'] as num).toDouble()
+          : null,
+      longitude: json['longitude'] != null
+          ? (json['longitude'] as num).toDouble()
+          : null,
       phone: json['phone'] as String?,
       email: json['email'] as String?,
       sioNumber: json['sio_number'] as String?,
-      sioExpiry: json['sio_expiry'] != null ? DateTime.tryParse(json['sio_expiry'] as String) : null,
+      sioExpiry: json['sio_expiry'] != null
+          ? DateTime.tryParse(json['sio_expiry'] as String)
+          : null,
       npwp: json['npwp'] as String?,
       fasyankesCode: json['fasyankes_code'] as String?,
       deedNumber: json['deed_number'] as String?,
       bpjsRegistered: (json['bpjs_registered'] as bool?) ?? false,
       bpjsFacilityCode: json['bpjs_facility_code'] as String?,
-      submittedAt: json['submitted_at'] != null ? DateTime.tryParse(json['submitted_at'] as String) : null,
-      reviewedAt: json['reviewed_at'] != null ? DateTime.tryParse(json['reviewed_at'] as String) : null,
+      submittedAt: json['submitted_at'] != null
+          ? DateTime.tryParse(json['submitted_at'] as String)
+          : null,
+      reviewedAt: json['reviewed_at'] != null
+          ? DateTime.tryParse(json['reviewed_at'] as String)
+          : null,
       reviewedBy: json['reviewed_by'] as String?,
       rejectionReason: json['rejection_reason'] as String?,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 

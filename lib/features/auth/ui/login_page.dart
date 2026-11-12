@@ -75,7 +75,8 @@ class _LoginPageState extends State<LoginPage> {
                         color: ClinicColors.lighten(c.accent, 0.15),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Icon(Icons.local_hospital, size: 36, color: c.accent),
+                      child:
+                          Icon(Icons.local_hospital, size: 36, color: c.accent),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -87,7 +88,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 4),
                   Text(
                     'Masuk ke Sistem Operasional Klinik',
-                    style: context.sBodyMuted,
+                    style: context.sSmall,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
@@ -103,16 +104,19 @@ class _LoginPageState extends State<LoginPage> {
                             decoration: BoxDecoration(
                               color: Colors.red.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                  color: Colors.red.withValues(alpha: 0.3)),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                                const Icon(Icons.error_outline,
+                                    color: Colors.red, size: 20),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     authCtrl.errorMessage!,
-                                    style: context.sBodyMuted.copyWith(color: Colors.red, fontSize: 13),
+                                    style: context.sSmall.copyWith(
+                                        color: Colors.red, fontSize: 13),
                                   ),
                                 ),
                               ],
@@ -120,8 +124,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           const SizedBox(height: 16),
                         ],
-
-                        FormField2(
+                        AppFormField(
                           label: 'Email Klinik / Pengelola',
                           hint: 'nama@klinik.com',
                           controller: _emailCtrl,
@@ -130,26 +133,28 @@ class _LoginPageState extends State<LoginPage> {
                           textInputAction: TextInputAction.next,
                         ),
                         const SizedBox(height: 16),
-
-                        FormField2(
+                        AppFormField(
                           label: 'Kata Sandi',
                           hint: 'Masukkan kata sandi Anda',
                           controller: _passwordCtrl,
                           obscureText: _obscurePassword,
-                          validator: (v) => AppValidators.validateRequired(v, 'Kata sandi'),
+                          validator: (v) =>
+                              AppValidators.validateRequired(v, 'Kata sandi'),
                           textInputAction: TextInputAction.done,
                           onFieldSubmitted: (_) => _submit(),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                              _obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
                               size: 20,
                               color: c.muted,
                             ),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword),
                           ),
                         ),
                         const SizedBox(height: 8),
-
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
@@ -162,15 +167,16 @@ class _LoginPageState extends State<LoginPage> {
                             },
                             child: Text(
                               'Lupa kata sandi?',
-                              style: context.sBody.copyWith(color: c.accent, fontSize: 13),
+                              style: context.sBody
+                                  .copyWith(color: c.accent, fontSize: 13),
                             ),
                           ),
                         ),
                         const SizedBox(height: 20),
-
                         AppButton(
-                          label: 'Masuk Sekarang',
+                          'Masuk Sekarang',
                           icon: Icons.login,
+                          kind: BtnKind.primary,
                           loading: authCtrl.loading,
                           onPressed: _submit,
                         ),
@@ -182,7 +188,8 @@ class _LoginPageState extends State<LoginPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Belum mendaftarkan klinik Anda?', style: context.sBodyMuted),
+                      Text('Belum mendaftarkan klinik Anda?',
+                          style: context.sSmall),
                       TextButton(
                         onPressed: () {
                           Navigator.of(context).push(
