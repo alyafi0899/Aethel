@@ -49,6 +49,13 @@ void main() {
         ),
         equals('Email ini sudah terdaftar di sistem.'),
       );
+
+      expect(
+        ErrorMapper.mapError(
+          const AuthException('Database error saving new user'),
+        ),
+        contains('0003_profiles_account_type.sql'),
+      );
     });
 
     test('mapError maps PostgrestException correctly', () {

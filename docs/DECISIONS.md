@@ -41,3 +41,7 @@ This document records key design decisions, technical trade-offs, and security c
 - **ClinicOperationsPublicModel.toJson**: Added `toJson()` with exact snake_case keys matching `fromJson`.
 - **AppFormatters.formatRupiah**: Added `formatRupiah` using `NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)` with non-breaking space normalization.
 - **Flow Control Lint**: Enclosed all single-line `if` statements in curly braces `{}` across `document_upload_tile.dart`.
+
+## 10. Supabase Sign-up Database Failures
+- **Decision**: Add `0003_profiles_account_type.sql` as a forward-only migration to add and constrain `profiles.account_type`, backfilling existing null values as `patient`.
+- **Rationale**: Supabase Auth logs confirmed that `handle_new_user()` inserts `account_type` but the deployed `profiles` table did not have that column. The original migration uses `CREATE TABLE IF NOT EXISTS`, which does not reconcile a pre-existing table with its declared columns. Do not modify migrations `0001` or `0002`; apply migration `0003` to the Supabase project before retrying signup.

@@ -33,6 +33,9 @@ class ErrorMapper {
     final code = error.code ?? '';
     final msg = error.message.toLowerCase();
 
+    if (msg.contains('database error saving new user')) {
+      return 'Pendaftaran gagal karena skema database Supabase belum sesuai. Administrator perlu menjalankan migrasi 0003_profiles_account_type.sql, lalu coba lagi.';
+    }
     if (code == 'invalid_credentials' ||
         msg.contains('invalid login credentials')) {
       return 'Email atau kata sandi salah.';
