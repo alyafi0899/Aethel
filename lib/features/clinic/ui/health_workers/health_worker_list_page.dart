@@ -26,7 +26,10 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
     final clinicCtrl = context.watch<ClinicController>();
     final clinicId = clinicCtrl.clinicId ?? '';
 
-    var workers = clinicCtrl.healthWorkers;
+    final seenIds = <String>{};
+    var workers = clinicCtrl.healthWorkers
+        .where((w) => w.id.isEmpty || seenIds.add(w.id))
+        .toList();
 
     // Filter by search query
     if (_searchQuery.isNotEmpty) {
@@ -323,6 +326,35 @@ class _HealthWorkerListPageState extends State<HealthWorkerListPage> {
                             initialWorker: worker,
                           ),
                         ).then((_) => clinicCtrl.loadClinicData(clinicId));
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      tooltip: 'Hapus Data',
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Hapus Tenaga Kesehatan?'),
+                            content: Text(
+                                'Data tenaga kesehatan "${worker.fullName}" beserta seluruh dokumen pendukung akan dihapus secara permanen.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(false),
+                                child: const Text('Batal'),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red),
+                                onPressed: () => Navigator.of(ctx).pop(true),
+                                child: const Text('Hapus'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          await clinicCtrl.deleteHealthWorker(worker.id);
+                        }
                       },
                     ),
                   ],

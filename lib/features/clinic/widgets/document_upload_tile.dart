@@ -460,6 +460,28 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
                     ],
                   ),
                   const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline,
+                            size: 14, color: Colors.blue),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'Dokumen dapat dilihat atau ditukar (unggah ulang). Mengganti berkas akan mengembalikan status ke "Menunggu Peninjauan".',
+                            style: context.sSmall
+                                .copyWith(color: Colors.blue.shade900, fontSize: 11),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [

@@ -687,6 +687,22 @@ class ClinicController extends ChangeNotifier {
     }
   }
 
+  Future<bool> deleteHealthWorker(String workerId) async {
+    if (clinicId == null) return false;
+    try {
+      await _staffRepo.deleteHealthWorker(workerId, clinicId!);
+      _healthWorkers = await _staffRepo.fetchHealthWorkers(clinicId!);
+      await refreshOnboardingStatus();
+      await refreshCompliance();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = ErrorMapper.mapError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> updateHealthWorkerDutyStatus(
       String workerId, DutyStatus status) async {
     if (clinicId == null) return false;

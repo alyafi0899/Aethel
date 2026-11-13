@@ -10,6 +10,7 @@ abstract class StaffRepository {
     required HealthWorkerModel worker,
     HealthWorkerPrivateModel? privateData,
   });
+  Future<void> deleteHealthWorker(String workerId, String clinicId);
   Future<void> updateDutyStatus({
     required String workerId,
     required String clinicId,
@@ -107,6 +108,15 @@ class SupabaseStaffRepository implements StaffRepository {
   }
 
   @override
+  Future<void> deleteHealthWorker(String workerId, String clinicId) async {
+    await _client
+        .from('health_workers')
+        .delete()
+        .eq('id', workerId)
+        .eq('clinic_id', clinicId);
+  }
+
+  @override
   Future<void> updateDutyStatus({
     required String workerId,
     required String clinicId,
@@ -195,6 +205,11 @@ class FakeStaffRepository implements StaffRepository {
     workers.removeWhere((w) => w.id == worker.id && worker.id.isNotEmpty);
     workers.add(updated);
     return updated;
+  }
+
+  @override
+  Future<void> deleteHealthWorker(String workerId, String clinicId) async {
+    workers.removeWhere((w) => w.id == workerId);
   }
 
   @override
