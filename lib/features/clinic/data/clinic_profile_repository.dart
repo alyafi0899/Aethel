@@ -172,10 +172,16 @@ class FakeClinicProfileRepository implements ClinicProfileRepository {
   OnboardingStatusModel mockOnboardingStatus = const OnboardingStatusModel(
     status: ClinicStatus.draft,
   );
+  String? onboardingStatusFailure;
+  String? submissionFailure;
+  int submitClinicForReviewCount = 0;
   ClinicEmrSettingsModel mockEmrSettings = const ClinicEmrSettingsModel(
     clinicId: 'c1',
   );
   List<ClinicOrgStructureModel> mockOrgStructure = [];
+  int integrationSecretSaveCount = 0;
+  String? lastIntegrationProvider;
+  String? integrationSecretFailure;
 
   @override
   Future<ClinicModel?> fetchClinicById(String clinicId) async => mockClinic;
@@ -190,19 +196,27 @@ class FakeClinicProfileRepository implements ClinicProfileRepository {
   }
 
   @override
-  Future<OnboardingStatusModel> getOnboardingStatus(String clinicId) async =>
-      mockOnboardingStatus;
+  Future<OnboardingStatusModel> getOnboardingStatus(String clinicId) async {
+    if (onboardingStatusFailure != null) {
+      throw PostgrestException(message: onboardingStatusFailure!);
+    }
+    return mockOnboardingStatus;
+  }
 
   @override
   Future<OnboardingStatusModel> submitClinicForReview(String clinicId) async {
+    submitClinicForReviewCount++;
+    if (submissionFailure != null) {
+      throw PostgrestException(message: submissionFailure!);
+    }
     mockOnboardingStatus = OnboardingStatusModel(
       status: ClinicStatus.submitted,
       basicData: mockOnboardingStatus.basicData,
       servicesFacilities: mockOnboardingStatus.servicesFacilities,
       adminLegal: mockOnboardingStatus.adminLegal,
-      emrSystem: mockOnboardingStatus.emrSystem,
       healthWorkers: mockOnboardingStatus.healthWorkers,
-      readyToSubmit: true,
+      publicMedia: mockOnboardingStatus.publicMedia,
+      recommendations: mockOnboardingStatus.recommendations,
     );
     return mockOnboardingStatus;
   }
@@ -223,6 +237,16 @@ class FakeClinicProfileRepository implements ClinicProfileRepository {
     required String provider,
     required String secret,
   }) async {
+    integrationSecretSaveCount++;
+    lastIntegrationProvider = provider;
+    if (integrationSecretFailure != null) {
+      throw PostgrestException(message: integrationSecretFailure!);
+    }
+    final status = mockClinic?.status;
+    if (status != ClinicStatus.verified &&
+        status != ClinicStatus.under_review) {
+      throw const PostgrestException(message: 'clinic_not_verified');
+    }
     mockEmrSettings = mockEmrSettings.copyWith(satusehatConnected: true);
   }
 
@@ -233,8 +257,10 @@ class FakeClinicProfileRepository implements ClinicProfileRepository {
   @override
   Future<ClinicEmrSettingsModel> updateEmrSettings(
       ClinicEmrSettingsModel settings) async {
-    mockEmrSettings = settings;
-    return settings;
+    mockEmrSettings = settings.copyWith(
+      satusehatConnected: mockEmrSettings.satusehatConnected,
+    );
+    return mockEmrSettings;
   }
 
   @override

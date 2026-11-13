@@ -88,10 +88,7 @@ class HealthWorkerModel {
       sipExpiry: json['sip_expiry'] != null
           ? DateTime.tryParse(json['sip_expiry'] as String)
           : null,
-      privateData: json['health_worker_private'] != null
-          ? HealthWorkerPrivateModel.fromJson(
-              json['health_worker_private'] as Map<String, dynamic>)
-          : null,
+      privateData: _parseHealthWorkerPrivate(json['health_worker_private']),
       educations: json['health_worker_educations'] != null
           ? (json['health_worker_educations'] as List)
               .map((e) => HealthWorkerEducationModel.fromJson(
@@ -142,6 +139,23 @@ class HealthWorkerModel {
       'sip_number': sipNumber,
       'sip_expiry': sipExpiry?.toIso8601String().split('T').first,
     };
+  }
+
+  static HealthWorkerPrivateModel? _parseHealthWorkerPrivate(dynamic value) {
+    if (value == null) return null;
+    if (value is Map<String, dynamic>) {
+      return HealthWorkerPrivateModel.fromJson(value);
+    }
+    if (value is List) {
+      if (value.isEmpty) return null;
+      final first = value.first;
+      if (first is Map<String, dynamic>) {
+        return HealthWorkerPrivateModel.fromJson(first);
+      }
+    }
+    throw const FormatException(
+      'Data pribadi tenaga kesehatan memiliki format yang tidak valid.',
+    );
   }
 
   HealthWorkerModel copyWith({

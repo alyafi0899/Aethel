@@ -12,11 +12,17 @@ import 'package:clinic_operations_platform/features/clinic/data/media_repository
 import 'package:clinic_operations_platform/features/clinic/data/reviews_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/staff_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_enums.dart';
+import 'package:clinic_operations_platform/features/clinic/models/clinic_equipment_model.dart';
+import 'package:clinic_operations_platform/features/clinic/models/clinic_facility_model.dart';
+import 'package:clinic_operations_platform/features/clinic/models/clinic_media_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/health_worker_models.dart';
+import 'package:clinic_operations_platform/features/clinic/models/onboarding_status_model.dart';
 import 'package:clinic_operations_platform/features/clinic/state/clinic_controller.dart';
 import 'package:clinic_operations_platform/features/clinic/ui/onboarding_wizard_page.dart';
+import 'package:clinic_operations_platform/features/clinic/widgets/public_media_uploader.dart';
 import 'package:clinic_operations_platform/features/operations/data/operations_repository.dart';
+import 'package:clinic_operations_platform/widgets/buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -24,10 +30,14 @@ import 'package:provider/provider.dart';
 class _WizardFixture {
   _WizardFixture({
     required this.clinicController,
+    required this.profileRepository,
+    required this.mediaRepository,
     required this.themeController,
   });
 
   final ClinicController clinicController;
+  final FakeClinicProfileRepository profileRepository;
+  final FakeMediaRepository mediaRepository;
   final ThemeController themeController;
 
   void dispose() {
@@ -39,24 +49,32 @@ class _WizardFixture {
 Future<_WizardFixture> _pumpWizard(
   WidgetTester tester, {
   required int step,
+  ClinicStatus clinicStatus = ClinicStatus.draft,
   List<HealthWorkerModel> workers = const [],
+  List<ClinicMediaModel> media = const [],
+  OnboardingStatusModel? onboardingStatus,
+  bool showRmeSettings = false,
 }) async {
   final profileRepository = FakeClinicProfileRepository()
-    ..mockClinic = const ClinicModel(
+    ..mockClinic = ClinicModel(
       id: 'clinic-1',
       ownerId: 'owner-1',
-      status: ClinicStatus.draft,
+      status: clinicStatus,
       clinicName: 'Klinik Contoh',
     );
+  if (onboardingStatus != null) {
+    profileRepository.mockOnboardingStatus = onboardingStatus;
+  }
   final catalogRepository = FakeClinicCatalogRepository();
   final staffRepository = FakeStaffRepository()..workers = workers;
+  final mediaRepository = FakeMediaRepository()..mediaList = media;
   final clinicController = ClinicController(
     profileRepo: profileRepository,
     catalogRepo: catalogRepository,
     staffRepo: staffRepository,
     documentRepo: FakeDocumentRepository(),
     operationsRepo: FakeOperationsRepository(),
-    mediaRepo: FakeMediaRepository(),
+    mediaRepo: mediaRepository,
     complianceRepo: FakeComplianceRepository(),
     reviewsRepo: FakeReviewsRepository(),
     feedbackRepo: FakeFeedbackRepository(),
@@ -66,6 +84,8 @@ Future<_WizardFixture> _pumpWizard(
   final themeController = ThemeController();
   final fixture = _WizardFixture(
     clinicController: clinicController,
+    profileRepository: profileRepository,
+    mediaRepository: mediaRepository,
     themeController: themeController,
   );
 
@@ -85,7 +105,10 @@ Future<_WizardFixture> _pumpWizard(
       ],
       child: MaterialApp(
         theme: AppTheme.build(themeController.config, Brightness.light),
-        home: OnboardingWizardPage(initialStep: step),
+        home: OnboardingWizardPage(
+          initialStep: step,
+          showRmeSettings: showRmeSettings,
+        ),
       ),
     ),
   );
@@ -145,6 +168,200 @@ void main() {
     expect(saved.notes, 'Merek contoh');
   });
 
+  testWidgets('langkah RME dilewati dan diatur otomatis ke Prometheon',
+      (tester) async {
+    final fixture = await _pumpWizard(tester, step: 4);
+
+    expect(
+      find.text('Langkah 4: Penanggung Jawab & Tenaga Kesehatan'),
+      findsOneWidget,
+    );
+    expect(find.text('Rekam Medis (RME)'), findsNothing);
+    expect(find.text('Sistem rekam medis apa yang dipakai klinik Anda?'),
+        findsNothing);
+    expect(
+        fixture.clinicController.emrSettings?.emrAppType, EmrAppType.internal);
+    expect(
+      fixture.clinicController.emrSettings?.emrAppName,
+      'Prometheon Clinic OS',
+    );
+    expect(fixture.clinicController.emrSettings?.emrChoiceConfirmed, isTrue);
+  });
+
+  testWidgets('navigasi dari administrasi langsung ke tenaga kesehatan',
+      (tester) async {
+    await _pumpWizard(tester, step: 3);
+    await tester.tap(find.text('Simpan & Lanjut'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Langkah 4: Penanggung Jawab & Tenaga Kesehatan'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('tinjau menampilkan saran tanpa memblokir kirim', (tester) async {
+    await _pumpWizard(
+      tester,
+      step: 6,
+      media: const [
+        ClinicMediaModel(
+          id: 'logo-1',
+          clinicId: 'clinic-1',
+          kind: MediaKind.logo,
+          filePath: 'clinic-1/logo/logo.jpg',
+        ),
+        ClinicMediaModel(
+          id: 'cover-1',
+          clinicId: 'clinic-1',
+          kind: MediaKind.cover,
+          filePath: 'clinic-1/cover/cover.jpg',
+        ),
+      ],
+      onboardingStatus: const OnboardingStatusModel(
+        status: ClinicStatus.draft,
+        basicData: OnboardingSectionStatus(complete: true),
+        servicesFacilities: OnboardingSectionStatus(complete: true),
+        adminLegal: OnboardingSectionStatus(complete: true),
+        healthWorkers: OnboardingSectionStatus(complete: true),
+        publicMedia: OnboardingSectionStatus(complete: true),
+        recommendations: [
+          'emr_choice',
+          'doc:service_sop',
+          'media:gallery',
+        ],
+      ),
+    );
+
+    expect(
+        find.text('Prometheon Clinic OS · Dikelola otomatis'), findsOneWidget);
+    expect(find.text('Saran sebelum mengirim'), findsOneWidget);
+    expect(find.text('Pilih sistem rekam medis klinik'), findsNothing);
+    expect(find.text('Unggah SOP layanan'), findsOneWidget);
+    expect(find.text('Tambah foto galeri'), findsOneWidget);
+
+    final sendButton = tester.widget<AppButton>(
+      find.ancestor(
+        of: find.text('Kirim Pendaftaran untuk Verifikasi'),
+        matching: find.byType(AppButton),
+      ),
+    );
+    expect(sendButton.onPressed, isNotNull);
+  });
+
+  testWidgets('integrasi SATUSEHAT tersedia setelah klinik terverifikasi',
+      (tester) async {
+    final fixture = await _pumpWizard(
+      tester,
+      step: 4,
+      clinicStatus: ClinicStatus.verified,
+      showRmeSettings: true,
+    );
+    expect(find.text('Terhubung ✓'), findsNothing);
+    await tester.tap(find.text('Hubungkan'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Kode ini disimpan di server dan tidak dapat dilihat kembali. Jangan bagikan kepada siapa pun.',
+      ),
+      findsOneWidget,
+    );
+    const secret = 'temporary-test-secret';
+    await tester.enterText(find.byType(TextFormField).last, secret);
+    await tester.tap(find.text('Simpan kode'));
+    await tester.pumpAndSettle();
+
+    expect(fixture.profileRepository.integrationSecretSaveCount, 1);
+    expect(fixture.profileRepository.lastIntegrationProvider, 'satusehat');
+    expect(fixture.clinicController.emrSettings?.satusehatConnected, isTrue);
+    expect(fixture.clinicController.toString(), isNot(contains(secret)));
+    expect(
+      fixture.clinicController.emrSettings.toString(),
+      isNot(contains(secret)),
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextFormField && widget.controller?.text == secret,
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
+      'integrasi belum tersedia sebelum verifikasi dan merahasiakan kode',
+      (tester) async {
+    final fixture = await _pumpWizard(
+      tester,
+      step: 4,
+      showRmeSettings: true,
+    );
+    expect(
+      find.text('Tersedia setelah klinik terverifikasi.'),
+      findsOneWidget,
+    );
+    expect(find.text('Hubungkan'), findsNothing);
+
+    const secret = 'temporary-test-secret';
+    final blocked = await fixture.clinicController.saveSatusehatSecret(secret);
+    expect(blocked, isFalse);
+    expect(
+      fixture.clinicController.errorMessage,
+      'Kode API hanya dapat disimpan setelah klinik terverifikasi.',
+    );
+
+    fixture.profileRepository.integrationSecretFailure =
+        'server error containing $secret';
+    final saved = await fixture.clinicController.saveSatusehatSecret(secret);
+
+    expect(saved, isFalse);
+    expect(
+      fixture.clinicController.errorMessage,
+      isNot(contains(secret)),
+    );
+    expect(fixture.profileRepository.integrationSecretSaveCount, 2);
+  });
+
+  testWidgets('dialog integrasi menjelaskan jika verifikasi belum terpenuhi',
+      (tester) async {
+    final fixture = await _pumpWizard(
+      tester,
+      step: 4,
+      clinicStatus: ClinicStatus.verified,
+      showRmeSettings: true,
+    );
+    fixture.profileRepository.integrationSecretFailure = 'clinic_not_verified';
+    await tester.tap(find.text('Hubungkan'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextFormField).last,
+      'temporary-test-secret',
+    );
+    await tester.tap(find.text('Simpan kode'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Kode API hanya dapat disimpan setelah klinik terverifikasi.'),
+      findsOneWidget,
+    );
+    expect(
+      fixture.clinicController.errorMessage,
+      isNot(contains('temporary-test-secret')),
+    );
+    await tester.tap(find.text('Batal'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextFormField &&
+            widget.controller?.text == 'temporary-test-secret',
+      ),
+      findsNothing,
+    );
+    expect(find.text('temporary-test-secret'), findsNothing);
+  });
+
   testWidgets('fasilitas menyimpan kapasitas, status, dan catatan',
       (tester) async {
     final fixture = await _pumpWizard(tester, step: 2);
@@ -168,6 +385,80 @@ void main() {
     expect(saved.capacity, 0);
     expect(saved.status, FacilityUnitStatus.occupied);
     expect(saved.notes, 'Akses kursi roda');
+  });
+
+  testWidgets('fasilitas yang ada dapat diedit tanpa membuat item baru',
+      (tester) async {
+    final fixture = await _pumpWizard(tester, step: 2);
+    await fixture.clinicController.saveFacility(
+      const ClinicFacilityModel(
+        id: 'facility-1',
+        clinicId: 'clinic-1',
+        name: 'Ruang Periksa',
+        capacity: 1,
+        notes: 'Catatan lama',
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byTooltip('Edit Ruang Periksa'));
+    await tester.tap(find.byTooltip('Edit Ruang Periksa'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit fasilitas atau ruangan'), findsOneWidget);
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'Ruang Tindakan');
+    await tester.enterText(fields.at(1), '4');
+    await tester.enterText(fields.at(2), 'Dekat ruang tunggu');
+    await tester.tap(find.text('Simpan Perubahan'));
+    await tester.pumpAndSettle();
+
+    expect(fixture.clinicController.facilities, hasLength(1));
+    final saved = fixture.clinicController.facilities.single;
+    expect(saved.id, 'facility-1');
+    expect(saved.name, 'Ruang Tindakan');
+    expect(saved.capacity, 4);
+    expect(saved.notes, 'Dekat ruang tunggu');
+  });
+
+  testWidgets('peralatan yang ada dapat diedit tanpa membuat item baru',
+      (tester) async {
+    final fixture = await _pumpWizard(tester, step: 2);
+    await fixture.clinicController.saveEquipment(
+      const ClinicEquipmentModel(
+        id: 'equipment-1',
+        clinicId: 'clinic-1',
+        name: 'Timbangan',
+        category: EquipmentCategory.non_medical,
+        quantity: 2,
+        condition: 'Baik',
+        notes: 'Catatan lama',
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byTooltip('Edit Timbangan'));
+    await tester.tap(find.byTooltip('Edit Timbangan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit peralatan'), findsOneWidget);
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'Timbangan Digital');
+    await tester.enterText(fields.at(1), '3');
+    await tester.enterText(fields.at(2), 'Merek contoh');
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Perlu Kalibrasi').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Simpan Perubahan'));
+    await tester.pumpAndSettle();
+
+    expect(fixture.clinicController.equipment, hasLength(1));
+    final saved = fixture.clinicController.equipment.single;
+    expect(saved.id, 'equipment-1');
+    expect(saved.name, 'Timbangan Digital');
+    expect(saved.category, EquipmentCategory.non_medical);
+    expect(saved.quantity, 3);
+    expect(saved.condition, 'Perlu Kalibrasi');
+    expect(saved.notes, 'Merek contoh');
   });
 
   testWidgets('obat menyimpan bentuk sediaan dan kekuatan dosis',
@@ -265,5 +556,217 @@ void main() {
     expect(saturday.isOpen, isTrue);
     expect(saturday.toJson()['open_time'], '08:00:00');
     expect(saturday.toJson()['close_time'], '17:00:00');
+  });
+
+  testWidgets('tinjau menahan kirim dan merinci logo serta sampul yang hilang',
+      (tester) async {
+    final fixture = await _pumpWizard(
+      tester,
+      step: 6,
+      onboardingStatus: const OnboardingStatusModel(
+        status: ClinicStatus.draft,
+        basicData: OnboardingSectionStatus(complete: true),
+        servicesFacilities: OnboardingSectionStatus(complete: true),
+        adminLegal: OnboardingSectionStatus(complete: true),
+        healthWorkers: OnboardingSectionStatus(complete: true),
+      ),
+    );
+
+    expect(
+      fixture.clinicController.onboardingStatus.publicMedia.missing,
+      ['media:logo', 'media:cover'],
+    );
+    expect(find.text('Identitas Visual Publik'), findsOneWidget);
+    expect(
+      find.textContaining('Unggah Logo Klinik (Identitas Visual)'),
+      findsNWidgets(2),
+    );
+    expect(
+      find.textContaining('Unggah Sampul Klinik (Identitas Visual)'),
+      findsOneWidget,
+    );
+    final sendButton = tester.widget<AppButton>(
+      find.ancestor(
+        of: find.text('Kirim Pendaftaran untuk Verifikasi'),
+        matching: find.byType(AppButton),
+      ),
+    );
+    expect(sendButton.onPressed, isNull);
+    final submitted = await fixture.clinicController.submitClinicForReview();
+    expect(submitted, isFalse);
+    expect(fixture.profileRepository.submitClinicForReviewCount, 0);
+    expect(fixture.clinicController.errorMessage, contains('Logo Klinik'));
+  });
+
+  testWidgets(
+      'media pending dari server menyelaraskan status tinjau dan mengizinkan kirim',
+      (tester) async {
+    final fixture = await _pumpWizard(
+      tester,
+      step: 6,
+      media: const [
+        ClinicMediaModel(
+          id: 'logo-1',
+          clinicId: 'clinic-1',
+          kind: MediaKind.logo,
+          filePath: 'clinic-1/logo/logo.jpg',
+          reviewStatus: DocumentReviewStatus.pending,
+        ),
+        ClinicMediaModel(
+          id: 'cover-1',
+          clinicId: 'clinic-1',
+          kind: MediaKind.cover,
+          filePath: 'clinic-1/cover/cover.jpg',
+          reviewStatus: DocumentReviewStatus.pending,
+        ),
+      ],
+      onboardingStatus: const OnboardingStatusModel(
+        status: ClinicStatus.draft,
+        basicData: OnboardingSectionStatus(complete: true),
+        servicesFacilities: OnboardingSectionStatus(complete: true),
+        adminLegal: OnboardingSectionStatus(complete: true),
+        healthWorkers: OnboardingSectionStatus(complete: true),
+        publicMedia: OnboardingSectionStatus(
+          missing: ['media:logo', 'media:cover'],
+        ),
+      ),
+    );
+
+    expect(
+        fixture.clinicController.onboardingStatus.publicMedia.complete, isTrue);
+    expect(find.text('Identitas Visual Publik'), findsOneWidget);
+    expect(find.text('Item yang belum lengkap:'), findsNothing);
+
+    fixture.profileRepository.mockOnboardingStatus =
+        const OnboardingStatusModel(
+      status: ClinicStatus.draft,
+      basicData: OnboardingSectionStatus(complete: true),
+      servicesFacilities: OnboardingSectionStatus(complete: true),
+      adminLegal: OnboardingSectionStatus(complete: true),
+      healthWorkers: OnboardingSectionStatus(complete: true),
+      publicMedia: OnboardingSectionStatus(
+        missing: ['media:logo', 'media:cover'],
+      ),
+    );
+    final refreshed = await fixture.clinicController.refreshOnboardingStatus();
+    expect(refreshed, isTrue);
+    expect(
+        fixture.clinicController.onboardingStatus.publicMedia.complete, isTrue);
+
+    final sendButton = tester.widget<AppButton>(
+      find.ancestor(
+        of: find.text('Kirim Pendaftaran untuk Verifikasi'),
+        matching: find.byType(AppButton),
+      ),
+    );
+    expect(sendButton.onPressed, isNotNull);
+
+    await tester.tap(find.text('Kirim Pendaftaran untuk Verifikasi'));
+    await tester.pumpAndSettle();
+    expect(fixture.profileRepository.submitClinicForReviewCount, 1);
+    expect(
+      fixture.clinicController.onboardingStatus.status,
+      ClinicStatus.submitted,
+    );
+  });
+
+  testWidgets('kegagalan RPC pengiriman ditampilkan kepada pengguna',
+      (tester) async {
+    final fixture = await _pumpWizard(
+      tester,
+      step: 6,
+      media: const [
+        ClinicMediaModel(
+          id: 'logo-1',
+          clinicId: 'clinic-1',
+          kind: MediaKind.logo,
+          filePath: 'clinic-1/logo/logo.jpg',
+        ),
+        ClinicMediaModel(
+          id: 'cover-1',
+          clinicId: 'clinic-1',
+          kind: MediaKind.cover,
+          filePath: 'clinic-1/cover/cover.jpg',
+        ),
+      ],
+      onboardingStatus: const OnboardingStatusModel(
+        status: ClinicStatus.draft,
+        basicData: OnboardingSectionStatus(complete: true),
+        servicesFacilities: OnboardingSectionStatus(complete: true),
+        adminLegal: OnboardingSectionStatus(complete: true),
+        healthWorkers: OnboardingSectionStatus(complete: true),
+      ),
+    );
+    fixture.profileRepository.submissionFailure =
+        'Gagal mengirim untuk verifikasi.';
+
+    await tester.tap(find.text('Kirim Pendaftaran untuk Verifikasi'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Gagal mengirim untuk verifikasi.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+      'status media yang gagal disegarkan dilaporkan, bukan dianggap sukses',
+      (tester) async {
+    final fixture = await _pumpWizard(tester, step: 1);
+    fixture.profileRepository.onboardingStatusFailure = 'status endpoint gagal';
+
+    final refreshed = await fixture.clinicController.refreshMedia();
+
+    expect(refreshed, isFalse);
+    expect(
+      fixture.clinicController.errorMessage,
+      contains('status endpoint gagal'),
+    );
+  });
+
+  testWidgets('perubahan media menunggu sinkronisasi dan menampilkan kegagalan',
+      (tester) async {
+    final themeController = ThemeController();
+    addTearDown(themeController.dispose);
+    final mediaRepository = FakeMediaRepository()
+      ..mediaList = [
+        const ClinicMediaModel(
+          id: 'logo-1',
+          clinicId: 'clinic-1',
+          kind: MediaKind.logo,
+          filePath: 'clinic-1/logo/logo.jpg',
+        ),
+      ];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.build(themeController.config, Brightness.light),
+        home: Scaffold(
+          body: PublicMediaUploader(
+            clinicId: 'clinic-1',
+            kind: MediaKind.logo,
+            title: 'Logo',
+            subtitle: 'Logo klinik',
+            existingMedia: mediaRepository.mediaList,
+            mediaRepo: mediaRepository,
+            onChanged: () async => false,
+          ),
+        ),
+      ),
+    );
+
+    await tester.ensureVisible(find.byIcon(Icons.delete_outline).first);
+    await tester.tap(find.byIcon(Icons.delete_outline).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus Media Publik?'), findsOneWidget);
+    await tester.tap(find.text('Hapus').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Perubahan tersimpan, tetapi status kelengkapan belum dapat diperbarui. Segarkan progres lalu coba kembali.',
+      ),
+      findsOneWidget,
+    );
+    expect(mediaRepository.mediaList, isEmpty);
   });
 }

@@ -8,15 +8,19 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/context_ext.dart';
+import '../../../core/l10n/terms_id.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/validators.dart';
+import '../../../data/models.dart';
+import '../../../state/app_controller.dart';
 import '../../../widgets/buttons.dart';
 import '../../../widgets/common.dart';
 import '../../../widgets/forms.dart';
 import '../../help/field_help.dart';
 import '../../help/support_actions.dart';
 import '../../auth/state/auth_controller.dart';
+import '../models/clinic_emr_settings_model.dart';
 import '../models/clinic_document_model.dart';
 import '../models/clinic_enums.dart';
 import '../models/clinic_equipment_model.dart';
@@ -24,6 +28,7 @@ import '../models/clinic_facility_model.dart';
 import '../models/clinic_medicine_model.dart';
 import '../models/clinic_operating_hours_model.dart';
 import '../models/clinic_org_structure_model.dart';
+import '../models/onboarding_recommendation.dart';
 import '../models/onboarding_status_model.dart';
 
 import '../state/clinic_controller.dart';
@@ -32,6 +37,9 @@ import '../widgets/public_media_uploader.dart';
 import '../widgets/rejected_items_panel.dart';
 import '../widgets/verification_timeline.dart';
 import 'health_workers/health_worker_form_dialog.dart';
+import 'satusehat_secret_dialog.dart';
+
+const kPrometheonEmrDescription = 'Rekam medis elektronik bawaan Prometheon.';
 
 class _ClinicTemplate {
   const _ClinicTemplate({
@@ -75,10 +83,12 @@ class OnboardingWizardPage extends StatefulWidget {
     super.key,
     this.rejectionReason,
     this.initialStep,
+    this.showRmeSettings = false,
   });
 
   final String? rejectionReason;
   final int? initialStep;
+  final bool showRmeSettings;
 
   @override
   State<OnboardingWizardPage> createState() => _OnboardingWizardPageState();
@@ -109,8 +119,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
   // Controllers for Step 4
   final _emrAppNameCtrl = TextEditingController();
   final _satusehatOrgCtrl = TextEditingController();
-  final _satusehatSecretCtrl = TextEditingController();
-  EmrAppType _selectedEmrType = EmrAppType.internal;
+  EmrAppType _selectedEmrType = EmrAppType.prometheon;
 
   bool _initializedData = false;
   bool _gettingLocation = false;
@@ -149,8 +158,11 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
 
   void _initFromClinic() {
     final clinic = context.read<ClinicController>().clinic;
+    if (widget.showRmeSettings) _currentStep = 4;
     if (clinic != null) {
-      _currentStep = (widget.initialStep ?? clinic.onboardingStep).clamp(1, 6);
+      final requestedStep = widget.initialStep ?? clinic.onboardingStep;
+      _currentStep =
+          widget.showRmeSettings ? 4 : _normalizeWizardStep(requestedStep);
       _clinicNameCtrl.text = clinic.clinicName ?? '';
       _selectedLegalType = clinic.legalEntityType ?? LegalEntityType.individual;
       _addressCtrl.text = clinic.addressFull ?? '';
@@ -209,7 +221,6 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
     _bpjsCodeCtrl.dispose();
     _emrAppNameCtrl.dispose();
     _satusehatOrgCtrl.dispose();
-    _satusehatSecretCtrl.dispose();
     super.dispose();
   }
 
@@ -286,7 +297,10 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
   }
 
   void _scheduleAutoSave() {
-    if (!_initializedData || !mounted || ![1, 3, 4].contains(_currentStep)) {
+    if (!_initializedData ||
+        !mounted ||
+        ![1, 3].contains(_currentStep) &&
+            !(widget.showRmeSettings && _currentStep == 4)) {
       return;
     }
     _autoSaveTimer?.cancel();
@@ -294,7 +308,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
       _autoSaveTimer = null;
       final saved = await _saveCurrentStepData(
         validate: false,
-        saveSecret: false,
+        confirmEmrChoice: false,
       );
       if (!saved && mounted) {
         final clinicCtrl = context.read<ClinicController>();
@@ -311,7 +325,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
   Future<bool> _saveCurrentStepData({
     bool showFeedback = false,
     bool validate = true,
-    bool saveSecret = true,
+    bool confirmEmrChoice = false,
   }) async {
     _autoSaveTimer?.cancel();
     _autoSaveTimer = null;
@@ -354,23 +368,26 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
       final saved = await clinicCtrl.updateBasicData(updated);
       return _reportStepSave(saved, showFeedback, clinicCtrl);
     } else if (_currentStep == 4) {
-      final emr = clinicCtrl.emrSettings;
-      var saved = emr != null;
-      if (emr != null) {
-        saved = await clinicCtrl.updateEmrSettings(
-          emr.copyWith(
-            emrAppName: _emrAppNameCtrl.text.trim(),
-            emrAppType: _selectedEmrType,
-            satusehatOrganizationId: _satusehatOrgCtrl.text.trim(),
-          ),
-        );
-      }
-      if (saveSecret && _satusehatSecretCtrl.text.trim().isNotEmpty) {
-        final secretSaved = await clinicCtrl
-            .saveSatusehatSecret(_satusehatSecretCtrl.text.trim());
-        saved = saved && secretSaved;
-        if (secretSaved) _satusehatSecretCtrl.clear();
-      }
+      final emr = clinicCtrl.emrSettings ??
+          ClinicEmrSettingsModel(clinicId: currentClinic.id);
+      final appName = _selectedEmrType == EmrAppType.thirdParty ||
+              _selectedEmrType == EmrAppType.internal
+          ? _emrAppNameCtrl.text.trim()
+          : '';
+      final organizationId = _selectedEmrType == EmrAppType.none
+          ? ''
+          : _satusehatOrgCtrl.text.trim();
+      final saved = await clinicCtrl.updateEmrSettings(
+        emr.copyWith(
+          emrAppType: _selectedEmrType,
+          emrAppName: appName.isEmpty ? null : appName,
+          clearEmrAppName: appName.isEmpty,
+          satusehatOrganizationId:
+              organizationId.isEmpty ? null : organizationId,
+          clearSatusehatOrganizationId: organizationId.isEmpty,
+          emrChoiceConfirmed: confirmEmrChoice ? true : emr.emrChoiceConfirmed,
+        ),
+      );
       return _reportStepSave(saved, showFeedback, clinicCtrl);
     } else {
       // Step 2, 5 save items dynamically on mutation
@@ -399,19 +416,24 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
   }
 
   Future<void> _goNext() async {
-    final saved = await _saveCurrentStepData(showFeedback: true);
+    final saved = await _saveCurrentStepData(
+      showFeedback: true,
+      confirmEmrChoice: widget.showRmeSettings && _currentStep == 4,
+    );
     if (saved && mounted) {
       if (_currentStep < 6) {
-        setState(() => _currentStep++);
+        setState(() => _currentStep = _nextWizardStep(_currentStep));
       }
     }
   }
 
   Future<void> _goToStep(int step) async {
-    if (step == _currentStep) return;
+    final targetStep =
+        widget.showRmeSettings ? step : _normalizeWizardStep(step);
+    if (targetStep == _currentStep) return;
     final saved = await _saveCurrentStepData(
       validate: false,
-      saveSecret: false,
+      confirmEmrChoice: false,
     );
     if (!mounted) return;
     if (!saved) {
@@ -422,15 +444,34 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
               'Perubahan belum tersimpan. Periksa koneksi sebelum berpindah bagian.'),
         ),
       );
-      return;
+      if (!widget.showRmeSettings || _currentStep != 4) return;
     }
-    setState(() => _currentStep = step);
+    setState(() => _currentStep = targetStep);
+  }
+
+  int _normalizeWizardStep(int step) {
+    final boundedStep = step.clamp(1, 6);
+    return boundedStep == 4 ? 5 : boundedStep;
+  }
+
+  int _nextWizardStep(int step) {
+    if (!widget.showRmeSettings && step == 3) return 5;
+    return step + 1;
   }
 
   void _goBack() {
     if (_currentStep > 1) {
-      setState(() => _currentStep--);
+      setState(() {
+        _currentStep =
+            !widget.showRmeSettings && _currentStep == 5 ? 3 : _currentStep - 1;
+      });
     }
+  }
+
+  void _openEmrSettings() {
+    final app = context.read<AppController>();
+    app.go(AppPage.clinicProfile);
+    app.selectProfileTab(3);
   }
 
   @override
@@ -457,7 +498,17 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan Progress',
-            onPressed: () => clinicCtrl.refreshOnboardingStatus(),
+            onPressed: () async {
+              final refreshed = await clinicCtrl.refreshMedia();
+              if (!refreshed && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(clinicCtrl.errorMessage ??
+                        'Status pendaftaran belum dapat diperbarui.'),
+                  ),
+                );
+              }
+            },
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -490,33 +541,40 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
               ),
             ),
 
-          // Top Stepper Navigation Header
-          Container(
-            decoration: BoxDecoration(
-              color: c.surface,
-              border: Border(bottom: BorderSide(color: c.border)),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _stepIndicator(
-                      1, 'Data Dasar', onboarding.basicData.complete),
-                  _stepIndicator(2, 'Layanan & Fasilitas',
-                      onboarding.servicesFacilities.complete),
-                  _stepIndicator(
-                      3, 'Administrasi', onboarding.adminLegal.complete),
-                  _stepIndicator(
-                      4, 'Sistem RME', onboarding.emrSystem.complete),
-                  _stepIndicator(
-                      5, 'Tenaga Kesehatan', onboarding.healthWorkers.complete),
-                  _stepIndicator(6, 'Tinjau & Kirim', onboarding.readyToSubmit),
-                ],
+          if (!widget.showRmeSettings)
+            Container(
+              decoration: BoxDecoration(
+                color: c.surface,
+                border: Border(bottom: BorderSide(color: c.border)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _stepIndicator(
+                        1, 'Data Dasar', onboarding.basicData.complete),
+                    _stepIndicator(2, 'Layanan & Fasilitas',
+                        onboarding.servicesFacilities.complete),
+                    _stepIndicator(
+                        3, 'Administrasi', onboarding.adminLegal.complete),
+                    _stepIndicator(
+                      5,
+                      'Tenaga Kesehatan',
+                      onboarding.healthWorkers.complete,
+                      displayNumber: 4,
+                    ),
+                    _stepIndicator(
+                      6,
+                      'Tinjau & Kirim',
+                      onboarding.readyToSubmit,
+                      displayNumber: 5,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
 
           // Main Step Body
           Expanded(
@@ -538,7 +596,44 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                         VerificationTimeline(clinic: clinicCtrl.clinic!),
                         const SizedBox(height: 12),
                       ],
-                      _missingItemsBanner(onboarding),
+                      if (clinicCtrl.emrInitializationError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: AppCard(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Pengaturan RME otomatis belum tersimpan: ${clinicCtrl.emrInitializationError}',
+                                    style: context.sSmall,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () async {
+                                    final saved = await clinicCtrl
+                                        .ensurePrometheonEmrSettings();
+                                    if (!saved && context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(clinicCtrl
+                                                  .emrInitializationError ??
+                                              'Pengaturan RME belum berhasil disimpan.'),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: const Text('Coba lagi'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      if (!widget.showRmeSettings)
+                        _missingItemsBanner(onboarding),
                       _buildCurrentStepContent(context),
                     ],
                   ),
@@ -547,47 +642,74 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
             ),
           ),
 
-          // Bottom Action Navigation Bar
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: c.surface,
-              border: Border(top: BorderSide(color: c.border)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (_currentStep > 1)
-                  AppButton(
-                    'Kembali',
-                    icon: Icons.arrow_back,
-                    kind: BtnKind.secondary,
-                    onPressed: _goBack,
-                  )
-                else
-                  const SizedBox(),
-                Row(
-                  children: [
-                    AppButton(
-                      'Simpan & lanjut besok',
-                      kind: BtnKind.secondary,
-                      loading: clinicCtrl.loading,
-                      onPressed: () => _saveCurrentStepData(showFeedback: true),
-                    ),
-                    const SizedBox(width: 12),
-                    if (_currentStep < 6)
-                      AppButton(
-                        'Simpan & Lanjut',
-                        icon: Icons.arrow_forward,
-                        kind: BtnKind.primary,
-                        loading: clinicCtrl.loading,
-                        onPressed: _goNext,
-                      ),
-                  ],
+          if (widget.showRmeSettings)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: c.surface,
+                border: Border(top: BorderSide(color: c.border)),
+              ),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: AppButton(
+                  'Simpan perubahan',
+                  icon: Icons.check,
+                  kind: BtnKind.primary,
+                  loading: clinicCtrl.loading,
+                  onPressed: () => _saveCurrentStepData(
+                    showFeedback: true,
+                    confirmEmrChoice: true,
+                  ),
                 ),
-              ],
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: c.surface,
+                border: Border(top: BorderSide(color: c.border)),
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                runSpacing: 8,
+                children: [
+                  if (_currentStep > 1)
+                    AppButton(
+                      'Kembali',
+                      icon: Icons.arrow_back,
+                      kind: BtnKind.secondary,
+                      onPressed: _goBack,
+                    )
+                  else
+                    const SizedBox.shrink(),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      AppButton(
+                        'Simpan & lanjut besok',
+                        kind: BtnKind.secondary,
+                        loading: clinicCtrl.loading,
+                        onPressed: () => _saveCurrentStepData(
+                          showFeedback: true,
+                          confirmEmrChoice: false,
+                        ),
+                      ),
+                      if (_currentStep < 6)
+                        AppButton(
+                          'Simpan & Lanjut',
+                          icon: Icons.arrow_forward,
+                          kind: BtnKind.primary,
+                          loading: clinicCtrl.loading,
+                          onPressed: _goNext,
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -598,7 +720,6 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
       ...status.basicData.missing,
       ...status.servicesFacilities.missing,
       ...status.adminLegal.missing,
-      ...status.emrSystem.missing,
       ...status.healthWorkers.missing,
       ...status.publicMedia.missing,
     ];
@@ -620,7 +741,12 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
     );
   }
 
-  Widget _stepIndicator(int stepIndex, String title, bool isComplete) {
+  Widget _stepIndicator(
+    int stepIndex,
+    String title,
+    bool isComplete, {
+    int? displayNumber,
+  }) {
     final c = context.c;
     final bool isCurrent = _currentStep == stepIndex;
 
@@ -644,7 +770,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                 child: isComplete && !isCurrent
                     ? const Icon(Icons.check, size: 16, color: Colors.white)
                     : Text(
-                        '$stepIndex',
+                        '${displayNumber ?? stepIndex}',
                         style: context.sLabel.copyWith(
                           color:
                               isCurrent || isComplete ? Colors.white : c.muted,
@@ -1183,9 +1309,28 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                             title: Text(f.name),
                             subtitle: Text(
                                 '${f.kind.label} • Kapasitas: ${f.capacity ?? '-'} • Status: ${f.status.label}'),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => clinicCtrl.deleteFacility(f.id),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  tooltip: 'Edit ${f.name}',
+                                  icon: const Icon(Icons.edit_outlined),
+                                  onPressed: () => _showFacilityDialog(
+                                    context,
+                                    clinicId,
+                                    facility: f,
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Hapus ${f.name}',
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () =>
+                                      clinicCtrl.deleteFacility(f.id),
+                                ),
+                              ],
                             ),
                           ))
                       .toList(),
@@ -1222,10 +1367,28 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                             title: Text(eq.name),
                             subtitle: Text(
                                 'Jumlah: ${eq.quantity} • Kondisi: ${eq.condition ?? 'Baik'}'),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () =>
-                                  clinicCtrl.deleteEquipment(eq.id),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  tooltip: 'Edit ${eq.name}',
+                                  icon: const Icon(Icons.edit_outlined),
+                                  onPressed: () => _showEquipmentDialog(
+                                    context,
+                                    clinicId,
+                                    equipment: eq,
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Hapus ${eq.name}',
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () =>
+                                      clinicCtrl.deleteEquipment(eq.id),
+                                ),
+                              ],
                             ),
                           ))
                       .toList(),
@@ -1797,6 +1960,9 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
     ClinicDocumentModel? requestLetterDoc;
     ClinicDocumentModel? qualityCommitmentDoc;
     ClinicDocumentModel? bpjsDoc;
+    ClinicDocumentModel? serviceSopDoc;
+    ClinicDocumentModel? clinicPhotoDoc;
+    ClinicDocumentModel? educationPosterDoc;
 
     for (final doc in clinicCtrl.clinicDocuments) {
       if (doc.docType == DocumentType.registration_request_letter) {
@@ -1807,6 +1973,11 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
       }
       if (doc.docType == DocumentType.bpjs_cooperation_proof) {
         bpjsDoc = doc;
+      }
+      if (doc.docType == DocumentType.service_sop) serviceSopDoc = doc;
+      if (doc.docType == DocumentType.clinic_photo) clinicPhotoDoc = doc;
+      if (doc.docType == DocumentType.educational_poster) {
+        educationPosterDoc = doc;
       }
     }
 
@@ -1943,144 +2114,215 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
               onChanged: () => clinicCtrl.refreshClinicDocuments(),
             ),
           ],
+          const SizedBox(height: 24),
+          Text('Dokumen tambahan (Opsional)',
+              style: context.sBody.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          DocumentUploadTile(
+            title: 'Unggah SOP layanan (Opsional)',
+            subtitle: 'Panduan kerja klinik untuk menjalankan layanan.',
+            clinicId: clinicId,
+            docType: DocumentType.service_sop,
+            existingClinicDoc: serviceSopDoc,
+            onChanged: () => clinicCtrl.refreshClinicDocuments(),
+          ),
+          const FieldHelp(contentId: 'service_sop'),
+          const SizedBox(height: 8),
+          DocumentUploadTile(
+            title: 'Unggah poster edukasi kesehatan (Opsional)',
+            subtitle: 'Poster edukasi pasien di ruang tunggu.',
+            clinicId: clinicId,
+            docType: DocumentType.educational_poster,
+            existingClinicDoc: educationPosterDoc,
+            onChanged: () => clinicCtrl.refreshClinicDocuments(),
+          ),
+          if (clinicPhotoDoc != null) ...[
+            const SizedBox(height: 16),
+            Text('Dokumen lain', style: context.sBody),
+            const SizedBox(height: 8),
+            DocumentUploadTile(
+              title: 'Foto fisik klinik lama',
+              subtitle:
+                  'Dokumen lama ini tidak lagi menjadi syarat pendaftaran.',
+              clinicId: clinicId,
+              docType: DocumentType.clinic_photo,
+              existingClinicDoc: clinicPhotoDoc,
+              allowUpload: false,
+              onChanged: () => clinicCtrl.refreshClinicDocuments(),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  // --- STEP 4: SISTEM RME ---
+  // --- STEP 4: REKAM MEDIS (RME) ---
   Widget _buildStep4SistemRme(BuildContext context) {
     final clinicCtrl = context.watch<ClinicController>();
-    final clinicId = clinicCtrl.clinicId ?? '';
-    final emr = clinicCtrl.emrSettings;
-
-    ClinicDocumentModel? sopDoc;
-    ClinicDocumentModel? photoDoc;
-    ClinicDocumentModel? posterDoc;
-
-    for (final doc in clinicCtrl.clinicDocuments) {
-      if (doc.docType == DocumentType.service_sop) sopDoc = doc;
-      if (doc.docType == DocumentType.clinic_photo) photoDoc = doc;
-      if (doc.docType == DocumentType.educational_poster) posterDoc = doc;
-    }
-
     return AppCard(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Langkah 4: Sistem RME & Integrasi SATUSEHAT',
-              style: context.sH2),
           Text(
-              'Informasi aplikasi Rekam Medis Elektronik (RME) dan integrasi Kemenkes SATUSEHAT.',
-              style: context.sSmall),
-          const SizedBox(height: 24),
-
-          AppFormField(
-            label: 'Nama Aplikasi RME',
-            hint: 'contoh: Prometheon RME / Aplikasi Pihak Ke-3',
-            controller: _emrAppNameCtrl,
-            validator: (v) =>
-                AppValidators.validateRequired(v, 'Nama aplikasi RME'),
+            widget.showRmeSettings
+                ? kEmrSectionLabel
+                : 'Langkah 4: $kEmrSectionLabel · Opsional',
+            style: context.sH2,
           ),
-          const SizedBox(height: 16),
-
-          Text('Jenis Aplikasi RME',
-              style: context.sBody.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 6),
-          DropdownButtonFormField<EmrAppType>(
-            initialValue: _selectedEmrType,
-            items: EmrAppType.values
-                .map((e) => DropdownMenuItem(value: e, child: Text(e.label)))
-                .toList(),
-            onChanged: (v) {
-              setState(() => _selectedEmrType = v ?? EmrAppType.internal);
+          Text(
+            'Sampaikan sistem rekam medis yang digunakan klinik. Informasi ini tidak memengaruhi pengiriman pendaftaran.',
+            style: context.sSmall,
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Sistem rekam medis apa yang dipakai klinik Anda?',
+            style: context.sBody.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          RadioGroup<EmrAppType>(
+            groupValue: _selectedEmrType,
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _selectedEmrType = value);
               _scheduleAutoSave();
             },
-            decoration: const InputDecoration(border: OutlineInputBorder()),
-          ),
-          const SizedBox(height: 16),
-
-          AppFormField(
-            label: 'ID Organisasi SATUSEHAT (Kemenkes)',
-            hint: 'Kode Organization ID SATUSEHAT',
-            controller: _satusehatOrgCtrl,
-          ),
-          const FieldHelp(contentId: 'satusehat_org'),
-          const SizedBox(height: 16),
-
-          // SATUSEHAT Write-only API Key Input
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: AppFormField(
-                  label: 'Kode API Secret SATUSEHAT',
-                  hint: emr?.satusehatConnected == true
-                      ? 'Terhubung ✓ (Tersimpan)'
-                      : 'Masukkan Client Secret SATUSEHAT',
-                  controller: _satusehatSecretCtrl,
-                  obscureText: true,
+            child: Column(
+              children: [
+                _emrChoiceCard(
+                  EmrAppType.prometheon,
+                  description: kPrometheonEmrDescription,
                 ),
-              ),
-              const SizedBox(width: 12),
-              AppButton(
-                emr?.satusehatConnected == true ? 'Ganti Kode' : 'Simpan Kode',
-                icon: Icons.vpn_key_outlined,
-                kind: BtnKind.secondary,
-                onPressed: () async {
-                  if (_satusehatSecretCtrl.text.trim().isNotEmpty) {
-                    final ok = await clinicCtrl
-                        .saveSatusehatSecret(_satusehatSecretCtrl.text.trim());
-                    if (ok && context.mounted) {
-                      _satusehatSecretCtrl.clear();
+                _emrChoiceCard(EmrAppType.thirdParty),
+                _emrChoiceCard(EmrAppType.internal),
+                _emrChoiceCard(EmrAppType.none),
+              ],
+            ),
+          ),
+          if (_selectedEmrType == EmrAppType.none) ...[
+            const SizedBox(height: 12),
+            _informationBanner(
+              'Fasilitas pelayanan kesehatan diwajibkan menyelenggarakan rekam medis elektronik (PMK 24/2022). Anda tetap dapat melanjutkan pendaftaran. Pastikan sesuai ketentuan yang berlaku.',
+            ),
+          ],
+          if (_selectedEmrType == EmrAppType.thirdParty ||
+              _selectedEmrType == EmrAppType.internal) ...[
+            const SizedBox(height: 16),
+            AppFormField(
+              label: 'Nama aplikasi (opsional)',
+              hint: 'Contoh: nama aplikasi rekam medis',
+              controller: _emrAppNameCtrl,
+            ),
+          ],
+          if (_selectedEmrType != EmrAppType.none) ...[
+            const SizedBox(height: 16),
+            AppFormField(
+              label: 'ID organisasi SATUSEHAT (opsional)',
+              hint: 'Masukkan ID organisasi jika sudah tersedia',
+              controller: _satusehatOrgCtrl,
+            ),
+            const FieldHelp(contentId: 'satusehat_org'),
+            const SizedBox(height: 12),
+            _informationBanner(
+              'Integrasi SATUSEHAT diaktifkan setelah klinik terverifikasi.',
+            ),
+          ],
+          const SizedBox(height: 24),
+          _satusehatIntegrationPanel(context, clinicCtrl),
+        ],
+      ),
+    );
+  }
+
+  Widget _satusehatIntegrationPanel(
+    BuildContext context,
+    ClinicController clinicCtrl,
+  ) {
+    final status = clinicCtrl.clinic?.status;
+    final canConnect =
+        status == ClinicStatus.verified || status == ClinicStatus.under_review;
+    final isConnected = clinicCtrl.emrSettings?.satusehatConnected ?? false;
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Integrasi SATUSEHAT', style: context.sStrong),
+          const SizedBox(height: 8),
+          if (!canConnect)
+            Text(
+              'Tersedia setelah klinik terverifikasi.',
+              style: context.sSmall,
+            )
+          else
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              runSpacing: 8,
+              children: [
+                Text(
+                  isConnected ? 'Terhubung ✓' : 'Belum terhubung',
+                  style: context.sBody,
+                ),
+                AppButton(
+                  isConnected ? 'Ganti kode' : 'Hubungkan',
+                  icon: Icons.vpn_key_outlined,
+                  kind: BtnKind.secondary,
+                  onPressed: () async {
+                    final connected = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => const SatusehatSecretDialog(),
+                    );
+                    if (connected == true && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content:
-                                Text('Kode API SATUSEHAT berhasil tersimpan!'),
-                            backgroundColor: Colors.green),
+                          content: Text('SATUSEHAT berhasil dihubungkan.'),
+                        ),
                       );
                     }
-                  }
-                },
-              ),
-            ],
-          ),
-          const FieldHelp(contentId: 'satusehat_api'),
-          const SizedBox(height: 24),
+                  },
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
 
-          DocumentUploadTile(
-            title: 'Unggah SOP Layanan Klinik',
-            subtitle: 'Dokumen SOP pelayanan medis & tata kelola rekam medis',
-            clinicId: clinicId,
-            docType: DocumentType.service_sop,
-            existingClinicDoc: sopDoc,
-            isRequired: true,
-            onChanged: () => clinicCtrl.refreshClinicDocuments(),
-          ),
-          const FieldHelp(contentId: 'service_sop'),
-          const SizedBox(height: 16),
+  Widget _emrChoiceCard(EmrAppType type, {String? description}) {
+    final selected = _selectedEmrType == type;
+    final colors = context.c;
+    return Card(
+      color: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: selected ? colors.accent : colors.border),
+      ),
+      child: RadioListTile<EmrAppType>(
+        value: type,
+        title: Text(type.userLabel),
+        subtitle: description == null ? null : Text(description),
+      ),
+    );
+  }
 
-          DocumentUploadTile(
-            title: 'Unggah Foto Fisik Klinik',
-            subtitle: 'Tampak depan, ruang tunggu, dan ruang periksa utama',
-            clinicId: clinicId,
-            docType: DocumentType.clinic_photo,
-            existingClinicDoc: photoDoc,
-            isRequired: true,
-            onChanged: () => clinicCtrl.refreshClinicDocuments(),
-          ),
-          const FieldHelp(contentId: 'clinic_photo'),
-          const SizedBox(height: 16),
-
-          DocumentUploadTile(
-            title: 'Unggah Poster Edukasi Kesehatan (Opsional)',
-            subtitle: 'Poster edukasi pasien di ruang tunggu',
-            clinicId: clinicId,
-            docType: DocumentType.educational_poster,
-            existingClinicDoc: posterDoc,
-            onChanged: () => clinicCtrl.refreshClinicDocuments(),
-          ),
+  Widget _informationBanner(String text) {
+    final colors = context.c;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, color: colors.muted),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: context.sBody)),
         ],
       ),
     );
@@ -2096,28 +2338,33 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Langkah 5: Penanggung Jawab & Tenaga Kesehatan',
+                  Text('Langkah 4: Penanggung Jawab & Tenaga Kesehatan',
                       style: context.sH2),
                   Text('Daftar dokter dan perawat aktif beserta STR & SIP.',
                       style: context.sSmall),
                 ],
               ),
-              AppButton(
-                'Tambah Tenaga Kesehatan',
-                icon: Icons.add,
-                kind: BtnKind.primary,
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) => HealthWorkerFormDialog(clinicId: clinicId),
-                  ).then((_) => clinicCtrl.loadClinicData(clinicId));
-                },
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: AppButton(
+                  'Tambah Tenaga Kesehatan',
+                  icon: Icons.add,
+                  kind: BtnKind.primary,
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) =>
+                          HealthWorkerFormDialog(clinicId: clinicId),
+                    ).then((_) => clinicCtrl.loadClinicData(clinicId));
+                  },
+                ),
               ),
             ],
           ),
@@ -2195,13 +2442,20 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
   Widget _buildStep6TinjauKirim(BuildContext context) {
     final clinicCtrl = context.watch<ClinicController>();
     final onboarding = clinicCtrl.onboardingStatus;
+    final recommendations = onboarding.recommendations
+        .map(OnboardingRecommendation.fromKey)
+        .whereType<OnboardingRecommendation>()
+        .where((recommendation) =>
+            recommendation.destination !=
+            OnboardingRecommendationDestination.emrSettings)
+        .toList();
 
     return AppCard(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Langkah 6: Tinjau Ringkasan & Kirim Pendaftaran',
+          Text('Langkah 5: Tinjau Ringkasan & Kirim Pendaftaran',
               style: context.sH2),
           Text(
               'Periksa kelengkapan semua bagian sebelum mengirimkan pendaftaran ke tim verifikasi.',
@@ -2209,12 +2463,49 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
           const SizedBox(height: 24),
           _summarySectionTile(1, 'Data Dasar Klinik', onboarding.basicData),
           _summarySectionTile(
+              1, 'Identitas Visual Publik', onboarding.publicMedia),
+          _summarySectionTile(
               2, 'Layanan & Fasilitas Klinik', onboarding.servicesFacilities),
           _summarySectionTile(3, 'Administrasi & Legal', onboarding.adminLegal),
-          _summarySectionTile(
-              4, 'Sistem RME & SATUSEHAT', onboarding.emrSystem),
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(kEmrSectionLabel, style: context.sBody),
+              subtitle: const Text(
+                'Prometheon Clinic OS · Dikelola otomatis',
+              ),
+              trailing: TextButton(
+                onPressed: _openEmrSettings,
+                child: const Text('Atur sekarang'),
+              ),
+            ),
+          ),
           _summarySectionTile(5, 'Penanggung Jawab & Tenaga Kesehatan',
               onboarding.healthWorkers),
+          if (recommendations.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text('Saran sebelum mengirim', style: context.sH3),
+            const SizedBox(height: 8),
+            for (final recommendation in recommendations)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: AppCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading:
+                        Icon(Icons.lightbulb_outline, color: context.c.muted),
+                    title: Text(recommendation.label, style: context.sBody),
+                    trailing: TextButton(
+                      onPressed: () =>
+                          _goToStep(recommendation.wizardStepIndex),
+                      child: const Text('Buka'),
+                    ),
+                  ),
+                ),
+              ),
+          ],
           const SizedBox(height: 32),
           if (!onboarding.readyToSubmit)
             Container(
@@ -2279,6 +2570,14 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                           content: Text(
                               'Pendaftaran berhasil dikirim! Menunggu peninjauan verifikator.'),
                           backgroundColor: Colors.green,
+                        ),
+                      );
+                    } else if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(clinicCtrl.errorMessage ??
+                              'Pendaftaran belum berhasil dikirim. Coba segarkan status dan periksa kembali data.'),
+                          backgroundColor: Colors.red,
                         ),
                       );
                     }
@@ -2361,20 +2660,29 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
 
   // --- DIALOG HELPERS ---
   Future<void> _showFacilityDialog(
-      BuildContext context, String clinicId) async {
-    final nameCtrl = TextEditingController();
-    final capacityCtrl = TextEditingController(text: '1');
-    final notesCtrl = TextEditingController();
+    BuildContext context,
+    String clinicId, {
+    ClinicFacilityModel? facility,
+  }) async {
+    final nameCtrl = TextEditingController(text: facility?.name ?? '');
+    final capacityCtrl = TextEditingController(
+      text: facility?.capacity?.toString() ?? (facility == null ? '1' : ''),
+    );
+    final notesCtrl = TextEditingController(text: facility?.notes ?? '');
     final formKey = GlobalKey<FormState>();
-    FacilityKind selectedKind = FacilityKind.consultation_room;
-    FacilityUnitStatus selectedStatus = FacilityUnitStatus.available;
+    FacilityKind selectedKind =
+        facility?.kind ?? FacilityKind.consultation_room;
+    FacilityUnitStatus selectedStatus =
+        facility?.status ?? FacilityUnitStatus.available;
     var saving = false;
 
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Tambah fasilitas atau ruangan'),
+          title: Text(facility == null
+              ? 'Tambah fasilitas atau ruangan'
+              : 'Edit fasilitas atau ruangan'),
           content: SizedBox(
             width: 460,
             child: Form(
@@ -2452,7 +2760,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                   saving ? null : () => Navigator.of(dialogContext).pop(),
             ),
             AppButton(
-              'Simpan',
+              facility == null ? 'Simpan' : 'Simpan Perubahan',
               icon: Icons.save_outlined,
               kind: BtnKind.primary,
               loading: saving,
@@ -2464,10 +2772,11 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                       final controller = context.read<ClinicController>();
                       final success = await controller.saveFacility(
                         ClinicFacilityModel(
-                          id: '',
+                          id: facility?.id ?? '',
                           clinicId: clinicId,
                           name: nameCtrl.text.trim(),
                           kind: selectedKind,
+                          isRoom: facility?.isRoom ?? true,
                           capacity: capacityCtrl.text.trim().isEmpty
                               ? null
                               : int.parse(capacityCtrl.text.trim()),
@@ -2498,20 +2807,27 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
   }
 
   Future<void> _showEquipmentDialog(
-      BuildContext context, String clinicId) async {
-    final nameCtrl = TextEditingController();
-    final quantityCtrl = TextEditingController(text: '1');
-    final notesCtrl = TextEditingController();
+    BuildContext context,
+    String clinicId, {
+    ClinicEquipmentModel? equipment,
+  }) async {
+    final nameCtrl = TextEditingController(text: equipment?.name ?? '');
+    final quantityCtrl = TextEditingController(
+      text: equipment?.quantity.toString() ?? '1',
+    );
+    final notesCtrl = TextEditingController(text: equipment?.notes ?? '');
     final formKey = GlobalKey<FormState>();
-    EquipmentCategory category = EquipmentCategory.medical;
-    var selectedCondition = '';
+    EquipmentCategory category =
+        equipment?.category ?? EquipmentCategory.medical;
+    var selectedCondition = equipment?.condition ?? '';
     var saving = false;
 
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Tambah peralatan'),
+          title:
+              Text(equipment == null ? 'Tambah peralatan' : 'Edit peralatan'),
           content: SizedBox(
             width: 460,
             child: Form(
@@ -2604,7 +2920,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                   saving ? null : () => Navigator.of(dialogContext).pop(),
             ),
             AppButton(
-              'Simpan',
+              equipment == null ? 'Simpan' : 'Simpan Perubahan',
               icon: Icons.save_outlined,
               kind: BtnKind.primary,
               loading: saving,
@@ -2616,7 +2932,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                       final controller = context.read<ClinicController>();
                       final success = await controller.saveEquipment(
                         ClinicEquipmentModel(
-                          id: '',
+                          id: equipment?.id ?? '',
                           clinicId: clinicId,
                           name: nameCtrl.text.trim(),
                           category: category,

@@ -25,8 +25,8 @@ This document records key design decisions, technical trade-offs, and security c
 - **Rationale**: Enforces tenant-level document privacy while enabling fast web & mobile file previews.
 
 ## 6. Write-Only Integration Secrets
-- **Decision**: SATUSEHAT API key is stored in `clinic_integration_secrets` with RLS completely revoking `select` permissions from `anon` and `authenticated` roles. Saving is strictly write-only via `save_clinic_integration_secret` RPC.
-- **Rationale**: Prevents client-side exposure of third-party integration secrets while allowing connection verification.
+- **Decision**: SATUSEHAT API codes are stored in `clinic_integration_secrets` with client `select` access revoked. Saving is write-only through `save_clinic_integration_secret`; the RPC permits verified and under-review clinics only.
+- **Rationale**: The API code is not needed during registration and must never be readable by the client. The UI requests it only when the clinic is eligible to configure the integration.
 
 ## 7. Sensitive Health Worker Data Separation & Masking
 - **Decision**: Sensitive personal details (NIK 16 digits, NPWP 15-16 digits, home address, birth date) are stored in `health_worker_private` with foreign key cascade. UI lists display masked values (showing only last 4 digits) and omit sensitive fields from logs.
@@ -53,3 +53,14 @@ This document records key design decisions, technical trade-offs, and security c
 ## 12. Clinic Location Map Tiles
 - **Decision**: The onboarding location picker uses OpenStreetMap tiles and displays attribution with a link to the OSM copyright page. The map only writes coordinates after an explicit map tap; GPS and manual coordinate entry remain available.
 - **Rationale and limitation**: `tile.openstreetmap.org` is a community-operated public service with a usage policy and no production availability guarantee. The app must not bulk-download or prefetch tiles. For sustained production traffic or offline use, configure a compliant hosted tile provider and follow its licensing, attribution, and caching requirements.
+
+## 13. Automatic RME Configuration and Recommendations
+- **Decision**: Rekam Medis (RME) is configured automatically as `emr_app_type=internal`, `emr_app_name=Prometheon Clinic OS`, and confirmed when clinic onboarding data is loaded. The manual RME step is hidden from the registration wizard; separate profile settings remain available. This is not a claim of certification, official status, or SATUSEHAT integration.
+- **Rationale**: Prometheon is the clinic's internal RME, so the onboarding flow must not ask clinics to re-enter its name. RME does not determine whether registration can be submitted. SOP and gallery uploads are optional recommendations rather than submission requirements; existing clinic-photo documents remain view/delete-only.
+- **Security**: The SATUSEHAT API code is requested only after clinic verification (or while under review), submitted directly to the write-only RPC, and cleared from the dialog controller after closing. It is not stored in client models, preferences, or logs.
+- **User guidance**: When the UI mentions the legal duty to use an electronic medical record, it also says “Pastikan sesuai ketentuan yang berlaku.”
+
+## 14. Server-Side Onboarding Readiness
+- **Decision**: The `clinic_onboarding_status` RPC and submission gate use the same five required sections as the wizard. RME remains informational and cannot block `submit_clinic_for_review`.
+- **Rationale**: The client can display every section as complete while an older deployed RPC still rejects submission for legacy RME requirements. Migration `0005_align_onboarding_submit_readiness.sql` reapplies the server-side status function and reloads the PostgREST schema cache.
+- **Operations**: Apply forward migrations `0004` and `0005` to the Supabase project before retrying submission. An `onboarding_incomplete` response containing only legacy RME requirements is surfaced as a migration action rather than a generic form error.

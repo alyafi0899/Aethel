@@ -27,6 +27,7 @@ class DocumentUploadTile extends StatefulWidget {
     this.existingClinicDoc,
     this.existingWorkerDoc,
     this.isRequired = false,
+    this.allowUpload = true,
     this.onChanged,
     this.documentRepo,
   }) : assert(
@@ -44,6 +45,7 @@ class DocumentUploadTile extends StatefulWidget {
   final ClinicDocumentModel? existingClinicDoc;
   final HealthWorkerDocumentModel? existingWorkerDoc;
   final bool isRequired;
+  final bool allowUpload;
   final VoidCallback? onChanged;
   final DocumentRepository? documentRepo;
 
@@ -498,19 +500,21 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          InkWell(
-                            onTap: _pickAndUpload,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              child: Text(
-                                'Ganti',
-                                style: context.sBody
-                                    .copyWith(color: Colors.blue, fontSize: 12),
+                          if (widget.allowUpload) ...[
+                            const SizedBox(width: 8),
+                            InkWell(
+                              onTap: _pickAndUpload,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                child: Text(
+                                  'Ganti',
+                                  style: context.sBody.copyWith(
+                                      color: Colors.blue, fontSize: 12),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                           const SizedBox(width: 8),
                           InkWell(
                             onTap: _delete,
@@ -539,7 +543,7 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
                 ],
               ),
             ),
-          ] else ...[
+          ] else if (widget.allowUpload) ...[
             AppButton(
               _uploading ? 'Mengunggah Berkas...' : 'Pilih & Unggah Berkas',
               icon: Icons.file_upload_outlined,
@@ -551,6 +555,11 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
             Text(
               'Format didukung: PDF, JPG, PNG, WEBP (maks. 10 MB)',
               style: context.sSmall.copyWith(fontSize: 11),
+            ),
+          ] else ...[
+            Text(
+              'Dokumen lama hanya dapat dilihat atau dihapus.',
+              style: context.sSmall,
             ),
           ],
         ],

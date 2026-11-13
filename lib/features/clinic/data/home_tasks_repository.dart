@@ -210,18 +210,6 @@ class HomeTasksRepository {
       ));
     }
 
-    if (!controller.mediaList.any((media) => media.kind == MediaKind.gallery)) {
-      suggestions.add(const HomeTask(
-        id: 'suggest-gallery',
-        severity: HomeTaskSeverity.info,
-        title: 'Tambahkan foto klinik',
-        body: 'Foto galeri membantu pasien mengenali suasana klinik.',
-        actionLabel: 'Tambah foto',
-        destination: AppPage.clinicProfile,
-        profileTab: 4,
-        isSuggestion: true,
-      ));
-    }
     if (controller.reviewStats.count > 0 &&
         controller.reviewStats.replied == 0) {
       suggestions.add(const HomeTask(

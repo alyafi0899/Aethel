@@ -30,7 +30,7 @@ class PublicMediaUploader extends StatefulWidget {
   final String subtitle;
   final List<ClinicMediaModel> existingMedia;
   final bool isRequired;
-  final VoidCallback? onChanged;
+  final Future<bool> Function()? onChanged;
   final MediaRepository? mediaRepo;
 
   @override
@@ -43,6 +43,19 @@ class _PublicMediaUploaderState extends State<PublicMediaUploader> {
 
   late final MediaRepository _repo;
 
+  int get _galleryCount => widget.existingMedia
+      .where((media) => media.kind == MediaKind.gallery)
+      .length;
+
+  int get _nextGallerySortOrder =>
+      widget.existingMedia
+          .where((media) => media.kind == MediaKind.gallery)
+          .fold(
+              -1,
+              (order, media) =>
+                  media.sortOrder > order ? media.sortOrder : order) +
+      1;
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +63,11 @@ class _PublicMediaUploaderState extends State<PublicMediaUploader> {
   }
 
   Future<void> _pickAndUpload() async {
+    if (widget.kind == MediaKind.gallery && _galleryCount >= 8) {
+      setState(() => _error = 'Batas maksimal galeri adalah 8 foto.');
+      return;
+    }
+
     final useCamera = await showModalBottomSheet<bool>(
       context: context,
       showDragHandle: true,
@@ -145,8 +163,7 @@ class _PublicMediaUploaderState extends State<PublicMediaUploader> {
 
       const mimeType = 'image/jpeg';
 
-      if (widget.kind == MediaKind.gallery &&
-          widget.existingMedia.length >= 8) {
+      if (widget.kind == MediaKind.gallery && _galleryCount >= 8) {
         throw Exception('Batas maksimal galeri adalah 8 foto.');
       }
 
@@ -156,13 +173,18 @@ class _PublicMediaUploaderState extends State<PublicMediaUploader> {
         fileName: name,
         bytes: bytes,
         mimeType: mimeType,
-        sortOrder:
-            widget.kind == MediaKind.gallery ? widget.existingMedia.length : 0,
+        sortOrder: widget.kind == MediaKind.gallery ? _nextGallerySortOrder : 0,
       );
 
+      final statusRefreshed = await widget.onChanged?.call() ?? true;
       if (mounted) {
-        setState(() => _uploading = false);
-        widget.onChanged?.call();
+        setState(() {
+          _uploading = false;
+          if (!statusRefreshed) {
+            _error =
+                'Media tersimpan, tetapi status kelengkapan belum dapat diperbarui. Segarkan progres lalu coba kembali.';
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -204,9 +226,15 @@ class _PublicMediaUploaderState extends State<PublicMediaUploader> {
 
     try {
       await _repo.deleteMedia(media);
+      final statusRefreshed = await widget.onChanged?.call() ?? true;
       if (mounted) {
-        setState(() => _uploading = false);
-        widget.onChanged?.call();
+        setState(() {
+          _uploading = false;
+          if (!statusRefreshed) {
+            _error =
+                'Perubahan tersimpan, tetapi status kelengkapan belum dapat diperbarui. Segarkan progres lalu coba kembali.';
+          }
+        });
       }
     } catch (e) {
       if (mounted) {

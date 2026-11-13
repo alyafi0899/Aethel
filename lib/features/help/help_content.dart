@@ -70,25 +70,25 @@ const Map<String, HelpContent> clinicHelpContent = {
   'satusehat_org': HelpContent(
     title: 'ID organisasi SATUSEHAT',
     what: 'Identitas organisasi klinik pada layanan SATUSEHAT.',
-    example: 'Salin ID organisasi dari akun atau portal SATUSEHAT klinik.',
-    where: 'Periksa detail organisasi pada portal SATUSEHAT.',
+    example:
+        'Diperlukan sebelum integrasi diaktifkan. Boleh dikosongkan sekarang.',
+    where:
+        'Periksa detail organisasi pada portal SATUSEHAT. Pastikan sesuai ketentuan yang berlaku.',
   ),
   'satusehat_api': HelpContent(
     title: 'Kode API SATUSEHAT',
-    what: 'Kredensial rahasia untuk menghubungkan sistem klinik.',
-    example: 'Jangan kirim kode ini melalui chat atau unggah sebagai dokumen.',
-    where: 'Minta kredensial dari pengelola akun SATUSEHAT klinik.',
+    what:
+        'Kredensial rahasia yang disimpan di server dan tidak dapat dibaca kembali.',
+    example:
+        'Kode hanya dapat disimpan setelah klinik terverifikasi atau sedang ditinjau. Jangan bagikan kepada siapa pun.',
+    where:
+        'Minta kredensial dari pengelola akun SATUSEHAT klinik. Pastikan sesuai ketentuan yang berlaku.',
   ),
   'service_sop': HelpContent(
     title: 'SOP layanan',
     what: 'Panduan kerja klinik untuk menjalankan layanan tertentu.',
-    example: 'Unggah dokumen yang sesuai dengan layanan yang dijalankan.',
+    example:
+        'Dokumen ini opsional. Unggah panduan yang sesuai dengan layanan klinik.',
     where: 'Minta salinan terbaru kepada penanggung jawab mutu klinik.',
-  ),
-  'clinic_photo': HelpContent(
-    title: 'Foto klinik',
-    what: 'Foto yang membantu menunjukkan lokasi atau fasilitas klinik.',
-    example: 'Gunakan foto yang terang, fokus, dan tidak menampilkan pasien.',
-    where: 'Ambil foto area klinik yang aman untuk dibagikan.',
   ),
 };

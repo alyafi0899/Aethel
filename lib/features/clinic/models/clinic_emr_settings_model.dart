@@ -1,5 +1,7 @@
 import 'clinic_enums.dart';
 
+const kPrometheonEmrAppName = 'Prometheon Clinic OS';
+
 class ClinicEmrSettingsModel {
   const ClinicEmrSettingsModel({
     required this.clinicId,
@@ -7,6 +9,7 @@ class ClinicEmrSettingsModel {
     this.emrAppType = EmrAppType.none,
     this.satusehatOrganizationId,
     this.satusehatConnected = false,
+    this.emrChoiceConfirmed = false,
     this.createdAt,
     this.updatedAt,
   });
@@ -16,6 +19,7 @@ class ClinicEmrSettingsModel {
   final EmrAppType emrAppType;
   final String? satusehatOrganizationId;
   final bool satusehatConnected;
+  final bool emrChoiceConfirmed;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -26,6 +30,7 @@ class ClinicEmrSettingsModel {
       emrAppType: EmrAppType.fromDb(json['emr_app_type'] as String?),
       satusehatOrganizationId: json['satusehat_organization_id'] as String?,
       satusehatConnected: (json['satusehat_connected'] as bool?) ?? false,
+      emrChoiceConfirmed: (json['emr_choice_confirmed'] as bool?) ?? false,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
@@ -41,6 +46,7 @@ class ClinicEmrSettingsModel {
       'emr_app_name': emrAppName,
       'emr_app_type': emrAppType.dbValue,
       'satusehat_organization_id': satusehatOrganizationId,
+      'emr_choice_confirmed': emrChoiceConfirmed,
     };
   }
 
@@ -50,16 +56,21 @@ class ClinicEmrSettingsModel {
     EmrAppType? emrAppType,
     String? satusehatOrganizationId,
     bool? satusehatConnected,
+    bool? emrChoiceConfirmed,
+    bool clearEmrAppName = false,
+    bool clearSatusehatOrganizationId = false,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
     return ClinicEmrSettingsModel(
       clinicId: clinicId ?? this.clinicId,
-      emrAppName: emrAppName ?? this.emrAppName,
+      emrAppName: clearEmrAppName ? null : emrAppName ?? this.emrAppName,
       emrAppType: emrAppType ?? this.emrAppType,
-      satusehatOrganizationId:
-          satusehatOrganizationId ?? this.satusehatOrganizationId,
+      satusehatOrganizationId: clearSatusehatOrganizationId
+          ? null
+          : satusehatOrganizationId ?? this.satusehatOrganizationId,
       satusehatConnected: satusehatConnected ?? this.satusehatConnected,
+      emrChoiceConfirmed: emrChoiceConfirmed ?? this.emrChoiceConfirmed,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

@@ -15,6 +15,7 @@ import '../../operations/ui/internal_operations_page.dart';
 import '../../help/support_actions.dart';
 import '../data/home_tasks_repository.dart';
 import '../models/clinic_enums.dart';
+import '../models/onboarding_recommendation.dart';
 import '../state/clinic_controller.dart';
 import '../widgets/rejected_items_panel.dart';
 
@@ -31,6 +32,8 @@ class _HomePageState extends State<HomePage> {
   final HomeTasksRepository _repository = _homeTasksRepository;
   HomeTasksResult? _result;
   final Set<String> _hiddenSuggestions = {};
+  final Set<String> _hiddenRecommendations = {};
+  String? _hiddenRecommendationsClinicId;
   bool _loading = true;
 
   @override
@@ -47,6 +50,19 @@ class _HomePageState extends State<HomePage> {
         controller,
         forceRefresh: forceRefresh,
       );
+      final statusLoaded = await controller.refreshOnboardingStatus();
+      if (!statusLoaded && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(controller.errorMessage ??
+                'Saran klinik belum dapat diperbarui.'),
+          ),
+        );
+      }
+      final clinicId = controller.clinicId;
+      if (clinicId != null && _hiddenRecommendationsClinicId != clinicId) {
+        await _loadHiddenRecommendations(clinicId);
+      }
       if (mounted) {
         setState(() {
           _result = result;
@@ -66,6 +82,69 @@ class _HomePageState extends State<HomePage> {
       }
     }
   }
+
+  Future<void> _loadHiddenRecommendations(String clinicId) async {
+    if (_hiddenRecommendationsClinicId != clinicId && mounted) {
+      setState(_hiddenRecommendations.clear);
+    }
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final hidden = OnboardingRecommendation.byKey.keys
+          .where((key) =>
+              preferences
+                  .getBool(_recommendationPreferenceKey(clinicId, key)) ==
+              true)
+          .toSet();
+      if (!mounted) return;
+      setState(() {
+        _hiddenRecommendations
+          ..clear()
+          ..addAll(hidden);
+        _hiddenRecommendationsClinicId = clinicId;
+      });
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Preferensi saran belum dapat dimuat: ${ErrorMapper.mapError(error)}'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _hideRecommendation(String recommendationKey) async {
+    final clinicId = context.read<ClinicController>().clinicId;
+    if (clinicId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Klinik belum tersedia untuk menyimpan saran.')),
+      );
+      return;
+    }
+
+    setState(() => _hiddenRecommendations.add(recommendationKey));
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool(
+        _recommendationPreferenceKey(clinicId, recommendationKey),
+        true,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _hiddenRecommendations.remove(recommendationKey));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Saran belum dapat disembunyikan: ${ErrorMapper.mapError(error)}'),
+        ),
+      );
+    }
+  }
+
+  String _recommendationPreferenceKey(String clinicId, String key) =>
+      'clinic_home_recommendation_hidden_${clinicId}_$key';
 
   Future<void> _showFirstVisitGuide(String clinicId) async {
     final key = 'clinic_home_guide_seen_$clinicId';
@@ -142,6 +221,12 @@ class _HomePageState extends State<HomePage> {
     final tasks = result?.tasks ?? const <HomeTask>[];
     final suggestions = (result?.suggestions ?? const <HomeTask>[])
         .where((task) => !_hiddenSuggestions.contains(task.id))
+        .toList();
+    final recommendations = clinicController.onboardingStatus.recommendations
+        .map(OnboardingRecommendation.fromKey)
+        .whereType<OnboardingRecommendation>()
+        .where((recommendation) =>
+            !_hiddenRecommendations.contains(recommendation.key))
         .toList();
     final isSioValid = clinicController.complianceStatus.sioValid;
     final isPublished = clinic?.isPublished ?? false;
@@ -236,7 +321,7 @@ class _HomePageState extends State<HomePage> {
               _TaskCard(task: task, onOpen: () => _openTask(task)),
               const SizedBox(height: 8),
             ],
-          if (suggestions.isNotEmpty) ...[
+          if (suggestions.isNotEmpty || recommendations.isNotEmpty) ...[
             const SizedBox(height: 14),
             Text('Saran', style: context.sH3),
             const SizedBox(height: 8),
@@ -247,6 +332,8 @@ class _HomePageState extends State<HomePage> {
                 onDismiss: () =>
                     setState(() => _hiddenSuggestions.add(suggestion.id)),
               ),
+            for (final recommendation in recommendations)
+              _buildRecommendationCard(recommendation),
           ],
           if (hasSupportContact) ...[
             const SizedBox(height: 12),
@@ -265,6 +352,24 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+  Widget _buildRecommendationCard(OnboardingRecommendation recommendation) {
+    final task = HomeTask(
+      id: 'recommendation:${recommendation.key}',
+      severity: HomeTaskSeverity.info,
+      title: recommendation.label,
+      body: 'Saran pengaturan klinik.',
+      actionLabel: 'Buka',
+      destination: AppPage.clinicProfile,
+      profileTab: recommendation.profileTabIndex,
+      isSuggestion: true,
+    );
+    return _TaskCard(
+      task: task,
+      onOpen: () => _openTask(task),
+      onDismiss: () => _hideRecommendation(recommendation.key),
     );
   }
 }

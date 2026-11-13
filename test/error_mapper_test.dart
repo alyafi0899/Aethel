@@ -69,6 +69,17 @@ void main() {
       expect(
         ErrorMapper.mapError(
           const PostgrestException(
+            message:
+                "Could not find the 'emr_choice_confirmed' column of 'clinic_emr_settings' in the schema cache",
+            code: 'PGRST204',
+          ),
+        ),
+        contains('0004_emr_choice_confirmed_schema_cache.sql'),
+      );
+
+      expect(
+        ErrorMapper.mapError(
+          const PostgrestException(
             message: 'duplicate key value violates unique constraint',
             code: '23505',
             details: 'Key (fasyankes_code)=(FK123) already exists',
@@ -113,6 +124,16 @@ void main() {
         ),
         contains('Data belum lengkap:'),
       );
+      expect(
+        ErrorMapper.mapError(
+          const PostgrestException(
+            message: 'onboarding_incomplete',
+            details:
+                '{"emr_system":{"complete":false,"missing":["emr_app_name"]}}',
+          ),
+        ),
+        contains('0005_align_onboarding_submit_readiness.sql'),
+      );
 
       expect(
         ErrorMapper.mapError(
@@ -126,8 +147,7 @@ void main() {
         ErrorMapper.mapError(
           const PostgrestException(message: 'clinic_not_verified'),
         ),
-        equals(
-            'Klinik harus berstatus terverifikasi sebelum dapat dipublikasikan.'),
+        equals('Kode API hanya dapat disimpan setelah klinik terverifikasi.'),
       );
 
       expect(
@@ -181,8 +201,6 @@ void main() {
           ErrorMapper.technicalKeyToIndonesian(
               'doc:registration_request_letter'),
           contains('Surat Permohonan Registrasi'));
-      expect(ErrorMapper.technicalKeyToIndonesian('emr_app_name'),
-          contains('Nama Aplikasi RME'));
       expect(ErrorMapper.technicalKeyToIndonesian('person_in_charge'),
           contains('Penanggung Jawab Klinik'));
       expect(ErrorMapper.technicalKeyToIndonesian('unknown_key'),
@@ -201,10 +219,6 @@ void main() {
       expect(ErrorMapper.keyToStepIndex('doc:registration_request_letter'), 3);
       expect(ErrorMapper.keyToStepIndex('org_structure'), 3);
       expect(ErrorMapper.keyToStepIndex('bpjs_facility_code'), 3);
-
-      expect(ErrorMapper.keyToStepIndex('emr_app_name'), 4);
-      expect(ErrorMapper.keyToStepIndex('doc:service_sop'), 4);
-      expect(ErrorMapper.keyToStepIndex('doc:clinic_photo'), 4);
 
       expect(ErrorMapper.keyToStepIndex('person_in_charge'), 5);
       expect(ErrorMapper.keyToStepIndex('doctor_with_str_sip'), 5);

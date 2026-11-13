@@ -1,96 +1,92 @@
-import 'package:clinic_operations_platform/app.dart';
+import 'package:clinic_operations_platform/core/theme/app_theme.dart';
 import 'package:clinic_operations_platform/core/theme/theme_config.dart';
 import 'package:clinic_operations_platform/core/theme/theme_controller.dart';
 import 'package:clinic_operations_platform/data/clinic_repository.dart';
-import 'package:clinic_operations_platform/features/auth/data/auth_repository.dart';
-import 'package:clinic_operations_platform/features/auth/state/auth_controller.dart';
 import 'package:clinic_operations_platform/features/clinic/data/clinic_catalog_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/clinic_profile_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/document_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/staff_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_enums.dart';
-import 'package:clinic_operations_platform/features/clinic/models/clinic_member_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_model.dart';
-import 'package:clinic_operations_platform/features/clinic/models/profile_model.dart';
+import 'package:clinic_operations_platform/features/clinic/models/onboarding_status_model.dart';
 import 'package:clinic_operations_platform/features/clinic/state/clinic_controller.dart';
+import 'package:clinic_operations_platform/features/clinic/ui/home_page.dart';
 import 'package:clinic_operations_platform/features/operations/data/operations_repository.dart';
 import 'package:clinic_operations_platform/state/app_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('clinic home renders with mock data', (tester) async {
+  testWidgets('clinic home suggestions can be hidden and persist per clinic',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'clinic_home_guide_seen_c1': true,
+    });
     tester.view.physicalSize = const Size(1500, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    final fakeAuthRepo = FakeAuthRepository();
-    final user = User(
-      id: 'u1',
-      appMetadata: {},
-      userMetadata: {'account_type': 'clinic'},
-      aud: 'authenticated',
-      createdAt: DateTime.now().toIso8601String(),
-    );
-    final session = Session(
-      accessToken: 'token',
-      tokenType: 'bearer',
-      user: user,
-    );
-    fakeAuthRepo.setMockState(
-      user: user,
-      session: session,
-      profile: const ProfileModel(
-        id: 'u1',
-        fullName: 'Dr. Elena',
-        accountType: 'clinic',
-      ),
-      membership: const ClinicMemberModel(
-        clinicId: 'c1',
-        userId: 'u1',
-        role: ClinicRole.owner,
-      ),
-    );
-
-    final fakeProfileRepo = FakeClinicProfileRepository();
-    fakeProfileRepo.mockClinic = const ClinicModel(
-      id: 'c1',
-      ownerId: 'u1',
-      status: ClinicStatus.verified,
-      clinicName: 'Prometheon Central Clinic',
-    );
-
-    final authCtrl = AuthController(repository: fakeAuthRepo);
-    final clinicCtrl = ClinicController(
-      profileRepo: fakeProfileRepo,
+    final profileRepository = FakeClinicProfileRepository()
+      ..mockClinic = const ClinicModel(
+        id: 'c1',
+        ownerId: 'u1',
+        status: ClinicStatus.verified,
+        clinicName: 'Klinik Contoh',
+      )
+      ..mockOnboardingStatus = const OnboardingStatusModel(
+        status: ClinicStatus.verified,
+        recommendations: ['media:gallery'],
+      );
+    final clinicController = ClinicController(
+      profileRepo: profileRepository,
       catalogRepo: FakeClinicCatalogRepository(),
       staffRepo: FakeStaffRepository(),
       documentRepo: FakeDocumentRepository(),
       operationsRepo: FakeOperationsRepository(),
     );
+    await clinicController.loadClinicData('c1');
+    final themeController = ThemeController(
+      kInitialThemeConfig.copyWith(useGoogleFonts: false),
+    );
+    addTearDown(clinicController.dispose);
+    addTearDown(themeController.dispose);
 
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider(
-            create: (_) => ThemeController(
-              kInitialThemeConfig.copyWith(useGoogleFonts: false),
-            ),
+          ChangeNotifierProvider.value(value: themeController),
+          ChangeNotifierProvider.value(
+            value: AppController(const MockClinicRepository()),
           ),
-          ChangeNotifierProvider(
-            create: (_) => AppController(const MockClinicRepository()),
-          ),
-          ChangeNotifierProvider.value(value: authCtrl),
-          ChangeNotifierProvider.value(value: clinicCtrl),
+          ChangeNotifierProvider.value(value: clinicController),
         ],
-        child: const ClinicApp(),
+        child: MaterialApp(
+          theme: AppTheme.build(themeController.config, Brightness.light),
+          home: const Scaffold(body: HomePage()),
+        ),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Beranda'), findsWidgets);
-    expect(find.text('Prometheon Central Clinic'), findsWidgets);
+    expect(find.text('Beranda'), findsOneWidget);
+    expect(find.text('Klinik Contoh'), findsOneWidget);
+    expect(find.text('Tambah foto galeri'), findsOneWidget);
+
+    final hideRecommendation = find.byTooltip('Sembunyikan saran').last;
+    await tester.ensureVisible(hideRecommendation);
+    await tester.pumpAndSettle();
+    await tester.tap(hideRecommendation);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tambah foto galeri'), findsNothing);
+    final preferences = await SharedPreferences.getInstance();
+    expect(
+      preferences.getBool(
+        'clinic_home_recommendation_hidden_c1_media:gallery',
+      ),
+      isTrue,
+    );
   });
 }

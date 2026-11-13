@@ -90,7 +90,7 @@ class RejectedItemsPanel extends StatelessWidget {
         DocumentType.service_sop ||
         DocumentType.clinic_photo ||
         DocumentType.educational_poster =>
-          4,
+          3,
         _ => 1,
       };
 }

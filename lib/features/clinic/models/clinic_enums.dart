@@ -245,13 +245,13 @@ enum FacilityOperatingStatus {
 }
 
 enum EmrAppType {
-  internal('internal', 'Sistem Prometheon RME Internal'),
-  third_party('third_party', 'Aplikasi RME Pihak Ketiga'),
-  none('none', 'Belum Ada Aplikasi RME');
+  prometheon('prometheon'),
+  thirdParty('third_party'),
+  internal('internal'),
+  none('none');
 
-  const EmrAppType(this.dbValue, this.label);
+  const EmrAppType(this.dbValue);
   final String dbValue;
-  final String label;
 
   static EmrAppType fromDb(String? value) {
     return EmrAppType.values.firstWhere(

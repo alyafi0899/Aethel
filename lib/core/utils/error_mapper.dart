@@ -62,6 +62,10 @@ class ErrorMapper {
     final msg = error.message;
     final detail = error.details?.toString() ?? '';
 
+    if (code == 'PGRST204' && msg.contains('emr_choice_confirmed')) {
+      return 'Skema Supabase belum memuat kolom konfirmasi RME. Jalankan migrasi 0004_emr_choice_confirmed_schema_cache.sql, lalu muat ulang aplikasi.';
+    }
+
     if (code == '42501' || msg.contains('not_authorized')) {
       return 'Anda tidak memiliki izin untuk melakukan aksi ini.';
     }
@@ -108,7 +112,7 @@ class ErrorMapper {
     }
 
     if (msg.contains('clinic_not_verified')) {
-      return 'Klinik harus berstatus terverifikasi sebelum dapat dipublikasikan.';
+      return 'Kode API hanya dapat disimpan setelah klinik terverifikasi.';
     }
 
     if (msg.contains('rejection_reason_required')) {
@@ -153,12 +157,19 @@ class ErrorMapper {
       collectMissing(decoded['basic_data']);
       collectMissing(decoded['services_facilities']);
       collectMissing(decoded['admin_legal']);
-      collectMissing(decoded['emr_system']);
       collectMissing(decoded['health_workers']);
       collectMissing(decoded['public_media']);
 
       if (missingList.isNotEmpty) {
         return 'Data belum lengkap:\n• ${missingList.join('\n• ')}';
+      }
+
+      final emrSection = decoded['emr_system'];
+      if (emrSection is Map && emrSection['missing'] is List) {
+        final emrMissing = emrSection['missing'] as List;
+        if (emrMissing.isNotEmpty) {
+          return 'Server Supabase masih memakai aturan RME lama. Jalankan migrasi 0005_align_onboarding_submit_readiness.sql, lalu coba kirim kembali.';
+        }
       }
     } catch (_) {}
 
@@ -216,12 +227,6 @@ class ErrorMapper {
         return 'Kode Fasilitas BPJS (Administrasi & Legal)';
       case 'doc:bpjs_cooperation_proof':
         return 'Unggah Bukti Kerjasama BPJS (Administrasi & Legal)';
-      case 'emr_app_name':
-        return 'Nama Aplikasi RME (Sistem RME)';
-      case 'doc:service_sop':
-        return 'Unggah Dokumen SOP Layanan (Sistem RME)';
-      case 'doc:clinic_photo':
-        return 'Unggah Foto Klinik (Sistem RME)';
       case 'person_in_charge':
         return 'Penanggung Jawab Klinik (Tenaga Kesehatan)';
       case 'doctor_with_str_sip':
@@ -263,11 +268,6 @@ class ErrorMapper {
         key == 'org_structure' ||
         key == 'bpjs_facility_code') {
       return 3;
-    }
-    if (key == 'emr_app_name' ||
-        key.startsWith('doc:service_sop') ||
-        key.startsWith('doc:clinic_photo')) {
-      return 4;
     }
     if (key == 'person_in_charge' ||
         key == 'doctor_with_str_sip' ||

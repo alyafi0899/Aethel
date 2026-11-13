@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/l10n/terms_id.dart';
 import '../core/theme/clinic_colors.dart';
 
 enum UserRole {
@@ -52,7 +53,7 @@ enum AppPage {
   clinicProfile('Profil & Legal', Icons.business_outlined),
   clinicServices('Layanan & Fasilitas', Icons.medical_services_outlined),
   clinicLegal('Administrasi & Legal', Icons.gavel_outlined),
-  clinicEmr('Sistem RME', Icons.computer_outlined),
+  clinicEmr(kEmrSectionLabel, Icons.computer_outlined),
   clinicStaff('Tenaga Kesehatan', Icons.badge_outlined),
   clinicOperationsInternal('Operasional', Icons.dashboard_outlined),
   clinicOperationsPublic('Tampilan Publik', Icons.public_outlined),

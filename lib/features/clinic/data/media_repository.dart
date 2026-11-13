@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/clinic_enums.dart';
@@ -30,6 +30,63 @@ class SupabaseMediaRepository implements MediaRepository {
 
   String _sanitizeFileName(String name) {
     return name.replaceAll(RegExp(r'[^a-zA-Z0-9\._-]'), '_');
+  }
+
+  Future<Map<String, dynamic>?> _findSingleKindMedia(
+    String clinicId,
+    MediaKind kind,
+  ) {
+    return _client
+        .from('clinic_media')
+        .select('id, file_path')
+        .eq('clinic_id', clinicId)
+        .eq('kind', kind.dbValue)
+        .maybeSingle();
+  }
+
+  Future<({Map<String, dynamic> row, String? previousPath})>
+      _saveSingleKindMedia(
+    Map<String, dynamic> payload,
+    String clinicId,
+    MediaKind kind,
+  ) async {
+    // This schema uses a partial unique index, which PostgREST cannot infer for ON CONFLICT.
+    Future<({Map<String, dynamic> row, String? previousPath})> updateExisting(
+      Map<String, dynamic> existing,
+    ) async {
+      final row = await _client
+          .from('clinic_media')
+          .update(payload)
+          .eq('id', existing['id'] as String)
+          .select()
+          .single();
+      return (
+        row: row,
+        previousPath: existing['file_path'] as String?,
+      );
+    }
+
+    final existing = await _findSingleKindMedia(clinicId, kind);
+    if (existing != null) return updateExisting(existing);
+
+    try {
+      final row =
+          await _client.from('clinic_media').insert(payload).select().single();
+      return (row: row, previousPath: null);
+    } on PostgrestException catch (error) {
+      if (error.code != '23505') rethrow;
+      final concurrentUpload = await _findSingleKindMedia(clinicId, kind);
+      if (concurrentUpload == null) rethrow;
+      return updateExisting(concurrentUpload);
+    }
+  }
+
+  Future<void> _removeStoredFile(String path, String reason) async {
+    try {
+      await _client.storage.from(_bucket).remove([path]);
+    } catch (error) {
+      debugPrint('Storage cleanup failed ($reason) for $path: $error');
+    }
   }
 
   @override
@@ -65,18 +122,16 @@ class SupabaseMediaRepository implements MediaRepository {
     final uniqueId = _uuid.v4();
     final path = '$clinicId/${kind.dbValue}/$uniqueId-$cleanName';
 
-    // 1. Upload to public storage
-    await _client.storage.from(_bucket).uploadBinary(
-          path,
-          bytes,
-          fileOptions: FileOptions(
-            contentType: mimeType ?? 'image/jpeg',
-            upsert: true,
-          ),
-        );
-
-    // 2. Insert or update DB row
     try {
+      await _client.storage.from(_bucket).uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(
+              contentType: mimeType ?? 'image/jpeg',
+              upsert: true,
+            ),
+          );
+
       final payload = {
         'clinic_id': clinicId,
         'kind': kind.dbValue,
@@ -89,24 +144,26 @@ class SupabaseMediaRepository implements MediaRepository {
         'review_status': 'pending',
       };
 
-      final res = await _client
-          .from('clinic_media')
-          .upsert(
-            payload,
-            onConflict: (kind == MediaKind.logo || kind == MediaKind.cover)
-                ? 'clinic_id, kind'
-                : null,
-          )
-          .select()
-          .single();
+      final isSingleKind = kind == MediaKind.logo || kind == MediaKind.cover;
+      final saved = isSingleKind
+          ? await _saveSingleKindMedia(payload, clinicId, kind)
+          : (
+              row: await _client
+                  .from('clinic_media')
+                  .insert(payload)
+                  .select()
+                  .single(),
+              previousPath: null,
+            );
 
-      final model = ClinicMediaModel.fromJson(res);
+      final model = ClinicMediaModel.fromJson(saved.row);
       final publicUrl = _client.storage.from(_bucket).getPublicUrl(path);
+      if (saved.previousPath != null && saved.previousPath != path) {
+        await _removeStoredFile(saved.previousPath!, 'replace previous media');
+      }
       return model.copyWith(publicUrl: publicUrl);
-    } catch (e) {
-      try {
-        await _client.storage.from(_bucket).remove([path]);
-      } catch (_) {}
+    } catch (_) {
+      await _removeStoredFile(path, 'roll back failed media upload');
       rethrow;
     }
   }
@@ -114,9 +171,7 @@ class SupabaseMediaRepository implements MediaRepository {
   @override
   Future<void> deleteMedia(ClinicMediaModel media) async {
     await _client.from('clinic_media').delete().eq('id', media.id);
-    try {
-      await _client.storage.from(_bucket).remove([media.filePath]);
-    } catch (_) {}
+    await _removeStoredFile(media.filePath, 'delete media');
   }
 
   @override

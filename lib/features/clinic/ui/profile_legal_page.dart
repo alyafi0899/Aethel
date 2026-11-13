@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/l10n/terms_id.dart';
 import '../../../core/theme/context_ext.dart';
 import '../../../state/app_controller.dart';
 import 'compliance_page.dart';
@@ -23,7 +24,7 @@ class _ProfileLegalPageState extends State<ProfileLegalPage>
     'Profil Klinik',
     'Layanan & Fasilitas',
     'Dokumen & Legal',
-    'Sistem RME',
+    kEmrSectionLabel,
     'Tampilan Publik',
     'Kepatuhan',
   ];
@@ -83,7 +84,10 @@ class _ProfileLegalPageState extends State<ProfileLegalPage>
             0 => const OnboardingWizardPage(),
             1 => const OnboardingWizardPage(initialStep: 2),
             2 => const OnboardingWizardPage(initialStep: 3),
-            3 => const OnboardingWizardPage(initialStep: 4),
+            3 => const OnboardingWizardPage(
+                initialStep: 4,
+                showRmeSettings: true,
+              ),
             4 => const PublicOperationsPage(),
             5 => const CompliancePage(),
             _ => const SizedBox.shrink(),

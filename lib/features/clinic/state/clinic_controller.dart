@@ -117,6 +117,7 @@ class ClinicController extends ChangeNotifier {
     status: ClinicStatus.draft,
   );
   ClinicEmrSettingsModel? _emrSettings;
+  String? _emrInitializationError;
   List<ClinicServiceModel> _services = [];
   List<ClinicFacilityModel> _facilities = [];
   List<ClinicEquipmentModel> _equipment = [];
@@ -140,6 +141,7 @@ class ClinicController extends ChangeNotifier {
   ClinicModel? get clinic => _clinic;
   OnboardingStatusModel get onboardingStatus => _onboardingStatus;
   ClinicEmrSettingsModel? get emrSettings => _emrSettings;
+  String? get emrInitializationError => _emrInitializationError;
   List<ClinicServiceModel> get services => _services;
   List<ClinicFacilityModel> get facilities => _facilities;
   List<ClinicEquipmentModel> get equipment => _equipment;
@@ -197,12 +199,19 @@ class ClinicController extends ChangeNotifier {
   Future<void> loadClinicData(String id) async {
     _loading = true;
     _errorMessage = null;
+    _emrInitializationError = null;
     notifyListeners();
 
     try {
       _clinic = await _profileRepo.fetchClinicById(id);
+      _emrSettings = null;
+      try {
+        _emrSettings = await _profileRepo.fetchEmrSettings(id);
+        await ensurePrometheonEmrSettings();
+      } catch (error) {
+        _emrInitializationError = ErrorMapper.mapError(error);
+      }
       _onboardingStatus = await _profileRepo.getOnboardingStatus(id);
-      _emrSettings = await _profileRepo.fetchEmrSettings(id);
       _services = await _catalogRepo.fetchServices(id);
       _facilities = await _catalogRepo.fetchFacilities(id);
       _equipment = await _catalogRepo.fetchEquipment(id);
@@ -212,6 +221,8 @@ class ClinicController extends ChangeNotifier {
       _healthWorkers = await _staffRepo.fetchHealthWorkers(id);
       _clinicDocuments = await _documentRepo.fetchClinicDocuments(id);
       _mediaList = await _mediaRepo.fetchMedia(id);
+      _onboardingStatus =
+          _onboardingStatus.withPublicMediaRecords(_mediaList);
 
       await refreshCompliance();
 
@@ -228,6 +239,43 @@ class ClinicController extends ChangeNotifier {
 
     _loading = false;
     notifyListeners();
+  }
+
+  Future<bool> ensurePrometheonEmrSettings() async {
+    final currentClinicId = clinicId;
+    if (currentClinicId == null) {
+      _emrInitializationError = 'Data klinik belum tersedia.';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      final settings =
+          _emrSettings ?? await _profileRepo.fetchEmrSettings(currentClinicId);
+      _emrSettings = settings;
+      if (settings.emrAppType == EmrAppType.internal &&
+          settings.emrAppName == kPrometheonEmrAppName &&
+          settings.emrChoiceConfirmed) {
+        _emrInitializationError = null;
+        return true;
+      }
+
+      _emrSettings = await _profileRepo.updateEmrSettings(
+        settings.copyWith(
+          clinicId: currentClinicId,
+          emrAppType: EmrAppType.internal,
+          emrAppName: kPrometheonEmrAppName,
+          emrChoiceConfirmed: true,
+        ),
+      );
+      _emrInitializationError = null;
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _emrInitializationError = ErrorMapper.mapError(error);
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> refreshCompliance() async {
@@ -262,9 +310,9 @@ class ClinicController extends ChangeNotifier {
     if (clinicId == null) return false;
     try {
       _mediaList = await _mediaRepo.fetchMedia(clinicId!);
-      await refreshOnboardingStatus();
+      final statusRefreshed = await refreshOnboardingStatus();
       notifyListeners();
-      return true;
+      return statusRefreshed;
     } catch (e) {
       _errorMessage = ErrorMapper.mapError(e);
       notifyListeners();
@@ -359,12 +407,19 @@ class ClinicController extends ChangeNotifier {
     }
   }
 
-  Future<void> refreshOnboardingStatus() async {
-    if (clinicId == null) return;
+  Future<bool> refreshOnboardingStatus() async {
+    if (clinicId == null) return false;
     try {
-      _onboardingStatus = await _profileRepo.getOnboardingStatus(clinicId!);
+      final status = await _profileRepo.getOnboardingStatus(clinicId!);
+      _onboardingStatus = status.withPublicMediaRecords(_mediaList);
+      _errorMessage = null;
       notifyListeners();
-    } catch (_) {}
+      return true;
+    } catch (error) {
+      _errorMessage = ErrorMapper.mapError(error);
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> updateBasicData(ClinicModel updated) async {
@@ -595,7 +650,16 @@ class ClinicController extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = ErrorMapper.mapError(e);
+      var safeMessage = ErrorMapper.mapError(e);
+      if (secret.isNotEmpty) {
+        safeMessage = safeMessage.replaceAll(secret, '[kode disamarkan]');
+        final encodedSecret = Uri.encodeComponent(secret);
+        if (encodedSecret != secret) {
+          safeMessage =
+              safeMessage.replaceAll(encodedSecret, '[kode disamarkan]');
+        }
+      }
+      _errorMessage = safeMessage;
       notifyListeners();
       return false;
     }
@@ -727,7 +791,25 @@ class ClinicController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      _mediaList = await _mediaRepo.fetchMedia(clinicId!);
+      final latestStatus = await _profileRepo.getOnboardingStatus(clinicId!);
+      _onboardingStatus =
+          latestStatus.withPublicMediaRecords(_mediaList);
+      if (!_onboardingStatus.readyToSubmit) {
+        final missing = _onboardingStatus.requiredMissingItems
+            .map(ErrorMapper.technicalKeyToIndonesian)
+            .toSet();
+        _errorMessage = missing.isEmpty
+            ? 'Data onboarding belum lengkap. Periksa kembali setiap bagian.'
+            : 'Data belum lengkap:\n• ${missing.join('\n• ')}';
+        _loading = false;
+        notifyListeners();
+        return false;
+      }
+
       _onboardingStatus = await _profileRepo.submitClinicForReview(clinicId!);
+      _onboardingStatus =
+          _onboardingStatus.withPublicMediaRecords(_mediaList);
       _clinic = await _profileRepo.fetchClinicById(clinicId!);
       _loading = false;
       notifyListeners();

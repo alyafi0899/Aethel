@@ -11,6 +11,7 @@ import 'package:clinic_operations_platform/features/clinic/data/clinic_profile_r
 import 'package:clinic_operations_platform/features/clinic/data/document_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/staff_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_enums.dart';
+import 'package:clinic_operations_platform/features/clinic/models/clinic_document_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_member_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/profile_model.dart';
@@ -108,6 +109,39 @@ void main() {
       expect(find.text('Unggah Surat Izin Operasional'), findsOneWidget);
       expect(find.text('Wajib'), findsOneWidget);
       expect(find.text('Pilih & Unggah Berkas'), findsOneWidget);
+    });
+
+    testWidgets('dokumen foto klinik lama hanya dapat dilihat atau dihapus',
+        (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        createTestApp(
+          Scaffold(
+            body: DocumentUploadTile(
+              title: 'Foto fisik klinik lama',
+              subtitle: 'Dokumen lama',
+              clinicId: 'c1',
+              docType: DocumentType.clinic_photo,
+              existingClinicDoc: const ClinicDocumentModel(
+                id: 'legacy-photo',
+                clinicId: 'c1',
+                docType: DocumentType.clinic_photo,
+                filePath: 'c1/clinic_photo/legacy.jpg',
+                fileName: 'legacy.jpg',
+              ),
+              allowUpload: false,
+              documentRepo: FakeDocumentRepository(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lihat'), findsOneWidget);
+      expect(find.text('Hapus'), findsOneWidget);
+      expect(find.text('Ganti'), findsNothing);
     });
 
     testWidgets('AuthGate routes non-clinic account type correctly',

@@ -8,7 +8,7 @@
 | Operasional Internal dan Operasional demo | Operasional; kontrol status dan antrean |
 | Tenaga Kesehatan | Tenaga Kesehatan |
 | Ulasan & Rating dan Masukan Privat | Ulasan & Masukan; tab Ulasan dan Masukan Privat |
-| Profil Klinik, Layanan & Fasilitas, Administrasi & Legal, Sistem RME, Tampilan Publik, Kepatuhan | Profil & Legal; tab untuk keenam bagian tersebut |
+| Profil Klinik, Layanan & Fasilitas, Administrasi & Legal, Rekam Medis (RME), Tampilan Publik, Kepatuhan | Profil & Legal; tab untuk keenam bagian tersebut |
 | Pengaturan tema | Pengaturan; tampilan, akun, syarat & privasi, bantuan, dan keluar |
 
 ## Halaman yang disembunyikan saat modul demo dimatikan

@@ -1,3 +1,4 @@
+import 'package:clinic_operations_platform/core/l10n/terms_id.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_document_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_emr_settings_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_enums.dart';
@@ -5,6 +6,7 @@ import 'package:clinic_operations_platform/features/clinic/models/clinic_equipme
 import 'package:clinic_operations_platform/features/clinic/models/clinic_facility_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_medicine_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_member_model.dart';
+import 'package:clinic_operations_platform/features/clinic/models/clinic_media_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_operating_hours_model.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_org_structure_model.dart';
@@ -16,6 +18,14 @@ import 'package:clinic_operations_platform/features/operations/models/clinic_ope
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('RME labels use Indonesian terminology', () {
+    expect(kEmrSectionLabel, 'Rekam Medis (RME)');
+    expect(EmrAppType.prometheon.userLabel, 'Prometheon');
+    expect(EmrAppType.thirdParty.userLabel, 'Aplikasi lain');
+    expect(EmrAppType.internal.userLabel, 'Dikembangkan klinik sendiri');
+    expect(EmrAppType.none.userLabel, 'Belum punya');
+  });
+
   group('Domain Models Serialization Tests', () {
     test('ClinicModel json serialization', () {
       const model = ClinicModel(
@@ -70,22 +80,129 @@ void main() {
         'status': 'draft',
         'basic_data': {
           'complete': false,
-          'missing': ['clinic_name']
+          'missing': ['clinic_name', 'emr_app_name', 'doc:service_sop']
         },
         'services_facilities': {'complete': true, 'missing': []},
         'admin_legal': {'complete': true, 'missing': []},
-        'emr_system': {'complete': true, 'missing': []},
+        'emr_system': {
+          'complete': false,
+          'missing': ['doc:clinic_photo']
+        },
         'health_workers': {'complete': true, 'missing': []},
         'ready_to_submit': false,
+        'recommendations': ['emr_choice', 'media:gallery'],
       };
 
       final status = OnboardingStatusModel.fromJson(json);
       expect(status.status, ClinicStatus.draft);
       expect(status.basicData.complete, false);
       expect(status.basicData.missing, ['clinic_name']);
-      expect(status.completedSectionsCount, 4);
-      expect(status.completionProgress, 4 / 6.0);
+      expect(status.emrSystem.complete, isTrue);
+      expect(status.emrSystem.missing, isEmpty);
+      expect(status.recommendations, ['emr_choice', 'media:gallery']);
+      expect(status.completedSectionsCount, 3);
+      expect(status.completionProgress, 3 / 5.0);
       expect(status.readyToSubmit, false);
+
+      final statusWithoutRecommendations = OnboardingStatusModel.fromJson({
+        'status': 'draft',
+      });
+      expect(statusWithoutRecommendations.recommendations, isEmpty);
+      expect(statusWithoutRecommendations.emrSystem.complete, isTrue);
+    });
+
+    test('RME status does not block readiness when five required sections pass',
+        () {
+      final status = OnboardingStatusModel.fromJson({
+        'status': 'draft',
+        'basic_data': {
+          'complete': false,
+          'missing': ['emr_app_name']
+        },
+        'services_facilities': {'complete': true, 'missing': []},
+        'admin_legal': {'complete': true, 'missing': []},
+        'emr_system': {
+          'complete': false,
+          'missing': ['emr_app_name', 'doc:service_sop']
+        },
+        'health_workers': {'complete': true, 'missing': []},
+        'public_media': {'complete': true, 'missing': []},
+        'ready_to_submit': false,
+      });
+
+      expect(status.emrSystem.complete, isTrue);
+      expect(status.emrSystem.missing, isEmpty);
+      expect(status.readyToSubmit, isTrue);
+    });
+
+    test('public media requires a non-rejected logo and cover', () {
+      final status = OnboardingStatusModel.fromJson({
+        'status': 'draft',
+        'basic_data': {'complete': true, 'missing': []},
+        'services_facilities': {'complete': true, 'missing': []},
+        'admin_legal': {'complete': true, 'missing': []},
+        'health_workers': {'complete': true, 'missing': []},
+        'public_media': {'complete': false, 'missing': ['media:logo']},
+      });
+
+      final logoOnly = status.withPublicMediaRecords([
+        const ClinicMediaModel(
+          id: 'logo-1',
+          clinicId: 'c1',
+          kind: MediaKind.logo,
+          filePath: 'c1/logo/logo.jpg',
+          reviewStatus: DocumentReviewStatus.pending,
+        ),
+        const ClinicMediaModel(
+          id: 'gallery-1',
+          clinicId: 'c1',
+          kind: MediaKind.gallery,
+          filePath: 'c1/gallery/gallery.jpg',
+        ),
+      ]);
+      expect(logoOnly.publicMedia.complete, isFalse);
+      expect(logoOnly.publicMedia.missing, ['media:cover']);
+      expect(logoOnly.readyToSubmit, isFalse);
+
+      final bothUploaded = status.withPublicMediaRecords([
+        const ClinicMediaModel(
+          id: 'logo-1',
+          clinicId: 'c1',
+          kind: MediaKind.logo,
+          filePath: 'c1/logo/logo.jpg',
+          reviewStatus: DocumentReviewStatus.pending,
+        ),
+        const ClinicMediaModel(
+          id: 'cover-1',
+          clinicId: 'c1',
+          kind: MediaKind.cover,
+          filePath: 'c1/cover/cover.jpg',
+          reviewStatus: DocumentReviewStatus.approved,
+        ),
+      ]);
+      expect(bothUploaded.publicMedia.complete, isTrue);
+      expect(bothUploaded.publicMedia.missing, isEmpty);
+      expect(bothUploaded.readyToSubmit, isTrue);
+
+      final rejectedLogo = bothUploaded.withPublicMediaRecords([
+        const ClinicMediaModel(
+          id: 'logo-1',
+          clinicId: 'c1',
+          kind: MediaKind.logo,
+          filePath: 'c1/logo/logo.jpg',
+          reviewStatus: DocumentReviewStatus.rejected,
+        ),
+        const ClinicMediaModel(
+          id: 'cover-1',
+          clinicId: 'c1',
+          kind: MediaKind.cover,
+          filePath: 'c1/cover/cover.jpg',
+          reviewStatus: DocumentReviewStatus.pending,
+        ),
+      ]);
+      expect(rejectedLogo.publicMedia.complete, isFalse);
+      expect(rejectedLogo.publicMedia.missing, ['media:logo']);
+      expect(rejectedLogo.readyToSubmit, isFalse);
     });
 
     test(
@@ -180,12 +297,19 @@ void main() {
 
       const emr = ClinicEmrSettingsModel(
         clinicId: 'c1',
-        emrAppName: 'Prometheon RME',
-        emrAppType: EmrAppType.internal,
+        emrAppType: EmrAppType.prometheon,
         satusehatConnected: true,
+        emrChoiceConfirmed: true,
       );
-      expect(ClinicEmrSettingsModel.fromJson(emr.toJson()).emrAppName,
-          'Prometheon RME');
+      final emrJson = emr.toJson();
+      expect(emrJson['emr_app_type'], 'prometheon');
+      expect(emrJson['emr_choice_confirmed'], isTrue);
+      expect(emrJson.containsKey('satusehat_connected'), isFalse);
+      expect(ClinicEmrSettingsModel.fromJson(emrJson).emrAppType,
+          EmrAppType.prometheon);
+      expect(EmrAppType.fromDb('third_party'), EmrAppType.thirdParty);
+      expect(EmrAppType.thirdParty.dbValue, 'third_party');
+      expect(EmrAppType.fromDb('unknown'), EmrAppType.none);
 
       const doc = ClinicDocumentModel(
         id: 'd1',
@@ -228,6 +352,18 @@ void main() {
       });
       expect(recon.fullName, 'Dr. Andi Pratama');
       expect(recon.privateData?.nik, '3171000022223333');
+
+      final reconWithListRelation = HealthWorkerModel.fromJson({
+        ...json,
+        'health_worker_private': [privateData.toJson()],
+      });
+      expect(reconWithListRelation.privateData?.nik, '3171000022223333');
+
+      final reconWithoutPrivateData = HealthWorkerModel.fromJson({
+        ...json,
+        'health_worker_private': <Map<String, dynamic>>[],
+      });
+      expect(reconWithoutPrivateData.privateData, isNull);
     });
 
     test('Operations Models serialization', () {

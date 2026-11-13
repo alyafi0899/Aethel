@@ -1,7 +1,11 @@
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart' as date_symbols;
 
 /// Formatting utilities for Indonesian currency, dates, masked PII, and phones.
 class AppFormatters {
+  static Future<void> initializeLocaleData() =>
+      date_symbols.initializeDateFormatting('id_ID');
+
   /// Formats currency in IDR (e.g. 75000 -> "Rp 75.000").
   static String formatRupiah(int? amount) {
     if (amount == null) return 'Rp 0';

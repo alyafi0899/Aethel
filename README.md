@@ -7,7 +7,7 @@ Prometheon Clinic OS is a full-featured, production-ready Flutter healthcare ope
 ## 🌟 Key Features
 
 - **Clinic Registration & Authentication**: Full sign-up flow with email confirmation, password strength validation, and automatic trigger profile/clinic creation.
-- **6-Step Onboarding Wizard**: Complete registration flow covering Data Dasar (SIO/Akta upload, location geolocator), Layanan & Fasilitas, Administrasi & Legal (BPJS, Org structure), Sistem RME (SATUSEHAT integration, write-only API key), Tenaga Kesehatan, and Review & Submit.
+- **Onboarding Wizard**: Registration covers Data Dasar (SIO/Akta and location), Layanan & Fasilitas, Administrasi & Legal, Tenaga Kesehatan, and Review & Submit. RME is configured automatically as internal `Prometheon Clinic OS`, is hidden from the wizard, and does not block verification submission. SATUSEHAT API codes can only be saved after clinic verification.
 - **Visual Identity & Public Media**: Logo, cover photo, and photo gallery management (`clinic-public-media` bucket) with moderation status badges.
 - **Compliance & Expiry Monitoring**: Automatic tracking for SIO, STR, and SIP expiration with real-time system alerts, global critical banners, and automatic public search exclusion for expired licenses.
 - **Patient Reviews & Ratings**: Verification-tied reviews management, star distribution, response rate analytics, official clinic reply dialog, and platform report dialog.
@@ -84,7 +84,9 @@ flutter run -d android \
 ### Step 1: Execute Migration SQL
 1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard).
 2. Open **SQL Editor**.
-3. Run `supabase/migrations/0001_clinic_core.sql`, `supabase/migrations/0002_trust_and_feedback.sql`, then `supabase/migrations/0003_profiles_account_type.sql` in order. The first two migrations remain unchanged; migration `0003` reconciles the profile column required by the auth signup trigger.
+3. Apply `supabase/migrations/0001_clinic_core.sql`, `supabase/migrations/0002_trust_and_feedback.sql`, `supabase/migrations/0003_profiles_account_type.sql`, `supabase/migrations/0003_simplify_emr_step.sql`, `supabase/migrations/0004_emr_choice_confirmed_schema_cache.sql`, and `supabase/migrations/0005_align_onboarding_submit_readiness.sql` according to the deployed database history. The EMR migrations make the step informational, refresh the PostgREST schema cache, and keep server-side submission readiness aligned with the five required sections. They also move SOP and gallery completion to recommendations and restrict SATUSEHAT secret storage to verified or under-review clinics. Do not edit already-applied migrations.
+
+Prometheon Clinic OS is recorded as the clinic's internal RME; this is not a claim of certification or official SATUSEHAT integration. Clinics remain responsible for meeting applicable requirements. Pastikan sesuai ketentuan yang berlaku.
 
 Optional support chat can be configured at build time with `--dart-define=SUPPORT_WHATSAPP=<international-number>`. Use the country code and digits only (for example, `6281234567890`).
 
