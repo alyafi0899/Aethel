@@ -1,39 +1,15 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/context_ext.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/image_crop_service.dart';
 import '../../../widgets/buttons.dart';
 import '../data/media_repository.dart';
 import '../models/clinic_enums.dart';
 import '../models/clinic_media_model.dart';
-
-Uint8List _resizeImageBytes(Map<String, dynamic> params) {
-  final bytes = params['bytes'] as Uint8List;
-  final ext = params['ext'] as String;
-  try {
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) return bytes;
-    if (decoded.width <= 1600 && decoded.height <= 1600) return bytes;
-
-    final resized = img.copyResize(
-      decoded,
-      width: decoded.width >= decoded.height ? 1600 : null,
-      height: decoded.height > decoded.width ? 1600 : null,
-    );
-
-    if (ext == 'png') {
-      return Uint8List.fromList(img.encodePng(resized));
-    } else {
-      return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
-    }
-  } catch (_) {
-    return bytes;
-  }
-}
 
 class PublicMediaUploader extends StatefulWidget {
   const PublicMediaUploader({
@@ -74,57 +50,111 @@ class _PublicMediaUploaderState extends State<PublicMediaUploader> {
   }
 
   Future<void> _pickAndUpload() async {
+    final useCamera = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Ambil foto dengan kamera'),
+              onTap: () => Navigator.pop(context, true),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Pilih foto'),
+              onTap: () => Navigator.pop(context, false),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (useCamera == null) return;
+
     setState(() {
       _uploading = true;
       _error = null;
     });
 
     try {
-      final files = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
-      );
+      late final String sourcePath;
+      late final String selectedName;
+      if (useCamera) {
+        final image = await ImagePicker().pickImage(
+          source: ImageSource.camera,
+          imageQuality: 100,
+        );
+        if (!mounted) return;
+        if (image == null) {
+          setState(() => _uploading = false);
+          return;
+        }
+        sourcePath = image.path;
+        selectedName = image.name;
+      } else {
+        final files = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+        );
+        if (!mounted) return;
+        if (files.isEmpty) {
+          setState(() => _uploading = false);
+          return;
+        }
+        final file = files.first;
+        sourcePath = resolveImageCropSourcePath(
+          filePath: file.path,
+          fileUri: file.uri,
+        );
+        selectedName = file.name;
+      }
 
-      if (files.isEmpty) {
+      final ratio = switch (widget.kind) {
+        MediaKind.logo => (1.0, 1.0),
+        MediaKind.cover => (16.0, 9.0),
+        MediaKind.gallery => (4.0, 3.0),
+      };
+      final bytes = await cropAndResizeImage(
+        context: context,
+        sourcePath: sourcePath,
+        ratioX: ratio.$1,
+        ratioY: ratio.$2,
+        title: switch (widget.kind) {
+          MediaKind.logo => 'Pangkas logo klinik',
+          MediaKind.cover => 'Pangkas foto sampul',
+          MediaKind.gallery => 'Pangkas foto galeri',
+        },
+      );
+      if (!mounted) return;
+      if (bytes == null) {
         if (mounted) setState(() => _uploading = false);
         return;
       }
 
-      final file = files.first;
-      final Uint8List bytes = await file.readAsBytes();
-      final String name = file.name;
-      final int size = (await file.length()) ?? bytes.length;
+      final name = '${selectedName.replaceAll(RegExp(r'\.[^.]+$'), '')}.jpg';
 
       if (bytes.isEmpty) {
         throw Exception('Berkas gambar tidak dapat dibaca atau kosong.');
       }
 
-      if (size > 5 * 1024 * 1024) {
+      if (bytes.length > 5 * 1024 * 1024) {
         throw Exception('Ukuran gambar melebihi batas maksimal 5 MB.');
       }
 
-      final ext = file.extension?.toLowerCase() ?? '';
-      final mimeType =
-          ext == 'webp' ? 'image/webp' : 'image/${ext == 'jpg' ? 'jpeg' : ext}';
+      const mimeType = 'image/jpeg';
 
       if (widget.kind == MediaKind.gallery &&
           widget.existingMedia.length >= 8) {
         throw Exception('Batas maksimal galeri adalah 8 foto.');
       }
 
-      Uint8List uploadBytes = bytes;
-      try {
-        uploadBytes = await compute(_resizeImageBytes, {
-          'bytes': bytes,
-          'ext': ext,
-        });
-      } catch (_) {}
-
       await _repo.uploadPublicMedia(
         clinicId: widget.clinicId,
         kind: widget.kind,
         fileName: name,
-        bytes: uploadBytes,
+        bytes: bytes,
         mimeType: mimeType,
         sortOrder:
             widget.kind == MediaKind.gallery ? widget.existingMedia.length : 0,

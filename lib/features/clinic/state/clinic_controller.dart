@@ -678,6 +678,48 @@ class ClinicController extends ChangeNotifier {
     }
   }
 
+  Future<bool> refreshHomeTaskData() async {
+    if (clinicId == null) return false;
+    final id = clinicId!;
+    final results = await Future.wait<bool>([
+      _loadHomeTaskSource(() async {
+        _clinicDocuments = await _documentRepo.fetchClinicDocuments(id);
+      }),
+      _loadHomeTaskSource(() async {
+        _mediaList = await _mediaRepo.fetchMedia(id);
+      }),
+      _loadHomeTaskSource(() async {
+        _healthWorkers = await _staffRepo.fetchHealthWorkers(id);
+      }),
+      _loadHomeTaskSource(() async {
+        _complianceStatus = await _complianceRepo.fetchComplianceStatus(id);
+      }),
+      _loadHomeTaskSource(() async {
+        _reviewStats = await _reviewsRepo.fetchReviewStats(id);
+        _reviews = await _reviewsRepo.fetchReviewsManage(clinicId: id);
+      }),
+      _loadHomeTaskSource(() async {
+        _feedbackList = await _feedbackRepo.fetchPrivateFeedback(clinicId: id);
+      }),
+      _loadHomeTaskSource(() async {
+        _internalOperations = await _operationsRepo.fetchInternalOperations(id);
+        _publicPreview = await _operationsRepo.fetchPublicPreview(id);
+      }),
+    ]);
+    notifyListeners();
+    return results.every((success) => success);
+  }
+
+  Future<bool> _loadHomeTaskSource(Future<void> Function() load) async {
+    try {
+      await load();
+      return true;
+    } catch (e) {
+      _errorMessage = ErrorMapper.mapError(e);
+      return false;
+    }
+  }
+
   Future<bool> submitClinicForReview() async {
     if (clinicId == null) return false;
     _loading = true;

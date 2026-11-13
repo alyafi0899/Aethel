@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/config/feature_flags.dart';
 import '../data/clinic_repository.dart';
 import '../data/models.dart';
 import '../data/supabase_clinic_repository.dart';
@@ -34,11 +35,26 @@ class AppController extends ChangeNotifier {
       _currentUserProfile?.initials ?? data.userInitials;
 
   AppPage page = AppPage.dashboard;
+  int profileTab = 0;
+  int reviewsTab = 0;
+  bool focusUnansweredReviews = false;
   String globalSearch = '';
   int notifCount = 4;
   List<Appointment> appointments = [];
 
   List<NavSection> get navSections {
+    if (!kShowDemoModules) {
+      return const [
+        NavSection('', [
+          AppPage.dashboard,
+          AppPage.clinicOperationsInternal,
+          AppPage.clinicStaff,
+          AppPage.clinicReviews,
+          AppPage.clinicProfile,
+          AppPage.settings,
+        ]),
+      ];
+    }
     if (currentRole.isAdmin) {
       return data.navSections;
     }
@@ -205,7 +221,56 @@ class AppController extends ChangeNotifier {
   }
 
   void go(AppPage next) {
+    switch (next) {
+      case AppPage.clinicServices:
+        profileTab = 1;
+        next = AppPage.clinicProfile;
+        break;
+      case AppPage.clinicLegal:
+        profileTab = 2;
+        next = AppPage.clinicProfile;
+        break;
+      case AppPage.clinicEmr:
+        profileTab = 3;
+        next = AppPage.clinicProfile;
+        break;
+      case AppPage.clinicOperationsPublic:
+        profileTab = 4;
+        next = AppPage.clinicProfile;
+        break;
+      case AppPage.clinicCompliance:
+        profileTab = 5;
+        next = AppPage.clinicProfile;
+        break;
+      case AppPage.clinicFeedback:
+        reviewsTab = 1;
+        next = AppPage.clinicReviews;
+        break;
+      default:
+        break;
+    }
+    if (!kShowDemoModules &&
+        !const {
+          AppPage.dashboard,
+          AppPage.clinicOperationsInternal,
+          AppPage.clinicStaff,
+          AppPage.clinicReviews,
+          AppPage.clinicProfile,
+          AppPage.settings,
+        }.contains(next)) {
+      next = AppPage.dashboard;
+    }
     page = next;
+    notifyListeners();
+  }
+
+  void selectProfileTab(int index) {
+    profileTab = index;
+    notifyListeners();
+  }
+
+  void selectReviewsTab(int index) {
+    reviewsTab = index;
     notifyListeners();
   }
 

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/context_ext.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/validators.dart';
+import '../../../help/field_help.dart';
 import '../../../../widgets/buttons.dart';
 import '../../../../widgets/forms.dart';
 import '../../models/clinic_enums.dart';
@@ -265,6 +266,7 @@ class _HealthWorkerFormDialogState extends State<HealthWorkerFormDialog>
                             controller: _nikCtrl,
                             validator: AppValidators.validateNik,
                           ),
+                          const FieldHelp(contentId: 'nik'),
                           const SizedBox(height: 12),
                           AppFormField(
                             label: 'Alamat Tempat Tinggal',
@@ -476,6 +478,13 @@ class _HealthWorkerFormDialogState extends State<HealthWorkerFormDialog>
                                   ],
                                 ),
                               ),
+                            ],
+                          ),
+                          const Wrap(
+                            spacing: 8,
+                            children: [
+                              FieldHelp(contentId: 'str'),
+                              FieldHelp(contentId: 'sip'),
                             ],
                           ),
                         ],

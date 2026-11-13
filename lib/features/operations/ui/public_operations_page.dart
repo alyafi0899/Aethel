@@ -3,7 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/context_ext.dart';
+import '../../../core/l10n/terms_id.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../data/models.dart';
+import '../../../state/app_controller.dart';
 import '../../../widgets/buttons.dart';
 import '../../../widgets/common.dart';
 import '../../clinic/models/clinic_enums.dart';
@@ -26,6 +29,9 @@ class _PublicOperationsPageState extends State<PublicOperationsPage> {
 
     final bool isVerified = clinic?.status == ClinicStatus.verified;
     final bool isPublished = clinic?.isPublished ?? false;
+    final bool isSioValid = clinicCtrl.complianceStatus.sioValid;
+    final bool canPublish = isVerified && isSioValid;
+    final bool isVisibleToPatients = canPublish && isPublished;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
@@ -38,15 +44,13 @@ class _PublicOperationsPageState extends State<PublicOperationsPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Layer Operasional Publik (Shared to Patients)',
-                      style: context.sH2),
-                  Text(
-                      'Tampilan informasi operasional real-time yang dibagikan kepada publik & pasien.',
+                  Text('Tampilan untuk pasien', style: context.sH2),
+                  Text('Periksa informasi klinik yang dapat dilihat pasien.',
                       style: context.sSmall),
                 ],
               ),
               AppButton(
-                'Segarkan Pratinjau',
+                'Segarkan pratinjau',
                 icon: Icons.refresh,
                 kind: BtnKind.secondary,
                 onPressed: () => clinicCtrl.refreshOperations(),
@@ -67,8 +71,9 @@ class _PublicOperationsPageState extends State<PublicOperationsPage> {
                     Row(
                       children: [
                         Icon(
-                          isPublished ? Icons.public : Icons.public_off,
-                          color: isPublished ? Colors.green : Colors.grey,
+                          isVisibleToPatients ? Icons.public : Icons.public_off,
+                          color:
+                              isVisibleToPatients ? Colors.green : Colors.grey,
                           size: 28,
                         ),
                         const SizedBox(width: 12),
@@ -76,16 +81,16 @@ class _PublicOperationsPageState extends State<PublicOperationsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              isPublished
-                                  ? 'Klinik Dipublikasikan ke Pasien'
-                                  : 'Klinik Disembunyikan dari Publik',
+                              isVisibleToPatients
+                                  ? 'Klinik tampil ke pasien'
+                                  : 'Klinik tidak tampil ke pasien',
                               style: context.sBody.copyWith(
                                   fontWeight: FontWeight.bold, fontSize: 16),
                             ),
                             Text(
-                              isPublished
-                                  ? 'Data operasional real-time klinik Anda dapat diakses oleh publik.'
-                                  : 'Aktifkan sakelar untuk mempublikasikan klinik setelah terverifikasi.',
+                              isVisibleToPatients
+                                  ? 'Pasien dapat melihat informasi klinik Anda.'
+                                  : 'Tampilkan klinik setelah data dan izin siap.',
                               style: context.sSmall.copyWith(fontSize: 12),
                             ),
                           ],
@@ -94,9 +99,18 @@ class _PublicOperationsPageState extends State<PublicOperationsPage> {
                     ),
                     Switch(
                       value: isPublished,
-                      onChanged: isVerified
-                          ? (val) {
-                              clinicCtrl.setClinicPublished(val);
+                      onChanged: canPublish
+                          ? (val) async {
+                              final success =
+                                  await clinicCtrl.setClinicPublished(val);
+                              if (!success && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(clinicCtrl.errorMessage ??
+                                        'Status tampilan belum berhasil diubah.'),
+                                  ),
+                                );
+                              }
                             }
                           : null,
                     ),
@@ -118,10 +132,36 @@ class _PublicOperationsPageState extends State<PublicOperationsPage> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Klinik Anda berstatus "${clinic?.status.label}". Publikasi hanya dapat diaktifkan setelah klinik disetujui dan berstatus Terverifikasi.',
+                            'Klinik berstatus "${clinic?.status.userLabel}". Klinik hanya bisa ditampilkan setelah terverifikasi.',
                             style: context.sBody.copyWith(
                                 color: Colors.amber.shade900, fontSize: 12),
                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (isVerified && !isSioValid) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: .1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                              'Klinik tidak dapat ditampilkan karena SIO kedaluwarsa. Perbarui SIO terlebih dahulu.'),
+                        ),
+                        TextButton(
+                          onPressed: () => context
+                              .read<AppController>()
+                              .go(AppPage.clinicCompliance),
+                          child: const Text('Lihat kepatuhan'),
                         ),
                       ],
                     ),

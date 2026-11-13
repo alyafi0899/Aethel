@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/context_ext.dart';
+import '../../../core/l10n/terms_id.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../widgets/buttons.dart';
 import '../../../widgets/common.dart';
 import '../../clinic/models/clinic_enums.dart';
 import '../../clinic/state/clinic_controller.dart';
+import '../../clinic/widgets/verification_timeline.dart';
 import '../state/auth_controller.dart';
 
 class PendingVerificationPage extends StatefulWidget {
@@ -157,7 +159,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                clinic?.status.label ?? 'Peninjauan',
+                                clinic?.status.userLabel ?? 'Sedang ditinjau',
                                 style: context.sLabel.copyWith(
                                   color: isSubmitted
                                       ? Colors.blue.shade800
@@ -171,6 +173,12 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  if (clinic != null)
+                    AppCard(
+                      padding: const EdgeInsets.all(16),
+                      child: VerificationTimeline(clinic: clinic),
+                    ),
                   const SizedBox(height: 24),
                   Row(
                     children: [

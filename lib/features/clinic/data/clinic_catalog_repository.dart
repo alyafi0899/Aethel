@@ -248,6 +248,8 @@ class SupabaseClinicCatalogRepository implements ClinicCatalogRepository {
           closeTime: source.closeTime,
           breakStart: source.breakStart,
           breakEnd: source.breakEnd,
+          clearBreakStart: source.breakStart == null,
+          clearBreakEnd: source.breakEnd == null,
         );
         await _client
             .from('clinic_operating_hours')

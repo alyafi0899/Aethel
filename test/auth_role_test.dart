@@ -20,7 +20,7 @@ void main() {
       expect(controller.activeUserRole, equals('Clinic Administrator'));
     });
 
-    test('Login as Nurse updates role and navigation sections', () {
+    test('Login as Nurse keeps the focused clinic navigation', () {
       controller.loginAsRole(UserRole.nurse);
 
       expect(controller.isLoggedIn, isTrue);
@@ -28,23 +28,25 @@ void main() {
       expect(controller.activeUserName, equals('Nurse Olivia Park'));
       expect(controller.activeUserRole, equals('Charge Nurse'));
 
-      // Check role-based navigation sections
-      final titles = controller.navSections.map((s) => s.title).toList();
-      expect(titles, contains('CLINICAL CARE'));
-      expect(titles, contains('STAFF & RESOURCES'));
-      expect(titles, contains('COMMUNICATION'));
-      expect(titles, isNot(contains('ADMINISTRATION')));
-      expect(titles, isNot(contains('FINANCE')));
+      final pages = controller.navSections.expand((s) => s.pages).toList();
+      expect(pages, [
+        AppPage.dashboard,
+        AppPage.clinicOperationsInternal,
+        AppPage.clinicStaff,
+        AppPage.clinicReviews,
+        AppPage.clinicProfile,
+        AppPage.settings,
+      ]);
     });
 
-    test('Login as Admin restores full navigation access', () {
+    test('Login as Admin keeps the focused clinic navigation', () {
       controller.loginAsRole(UserRole.nurse);
       controller.loginAsRole(UserRole.admin);
 
       expect(controller.currentRole, equals(UserRole.admin));
-      final titles = controller.navSections.map((s) => s.title).toList();
-      expect(titles, contains('ADMINISTRATION'));
-      expect(titles, contains('FINANCE'));
+      final pages = controller.navSections.expand((s) => s.pages).toList();
+      expect(pages, hasLength(6));
+      expect(pages.toSet(), hasLength(6));
     });
 
     test('Logout clears session state', () async {

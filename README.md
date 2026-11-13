@@ -4,7 +4,7 @@ Prometheon Clinic OS is a full-featured, production-ready Flutter healthcare ope
 
 ---
 
-## 🌟 Key Features (Stage 1 & Stage 2 Completed)
+## 🌟 Key Features
 
 - **Clinic Registration & Authentication**: Full sign-up flow with email confirmation, password strength validation, and automatic trigger profile/clinic creation.
 - **6-Step Onboarding Wizard**: Complete registration flow covering Data Dasar (SIO/Akta upload, location geolocator), Layanan & Fasilitas, Administrasi & Legal (BPJS, Org structure), Sistem RME (SATUSEHAT integration, write-only API key), Tenaga Kesehatan, and Review & Submit.
@@ -17,6 +17,8 @@ Prometheon Clinic OS is a full-featured, production-ready Flutter healthcare ope
 - **Internal Operations Layer**: Real-time queue management (+/- controls, process status), operational facility status, daily statistics, and calculated staffing metrics.
 - **Shared Public Operations Layer**: Patient-facing live view (`clinic_public_preview` RPC and `clinic_operations_public` view) with clinic status, wait time, available doctors, and publishing control.
 - **Row Level Security (RLS)**: Enforced multi-tenant data isolation per clinic using indexed SECURITY DEFINER functions (`is_clinic_member()`, `is_clinic_owner()`, `is_platform_admin()`).
+- **Clinic administrator experience**: Focused six-destination navigation, action-oriented home, simplified operations controls, onboarding field help, reusable clinic templates, and patient-visibility safeguards.
+- **Location and support tools**: OpenStreetMap location picker with attribution, optional camera uploads, first-visit home guide, and WhatsApp support when configured.
 
 ---
 
@@ -82,7 +84,9 @@ flutter run -d android \
 ### Step 1: Execute Migration SQL
 1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard).
 2. Open **SQL Editor**.
-3. Run `supabase/migrations/0001_clinic_core.sql` followed by `supabase/migrations/0002_trust_and_feedback.sql`.
+3. Run `supabase/migrations/0001_clinic_core.sql`, `supabase/migrations/0002_trust_and_feedback.sql`, then `supabase/migrations/0003_profiles_account_type.sql` in order. The first two migrations remain unchanged; migration `0003` reconciles the profile column required by the auth signup trigger.
+
+Optional support chat can be configured at build time with `--dart-define=SUPPORT_WHATSAPP=<international-number>`. Use the country code and digits only (for example, `6281234567890`).
 
 ### Step 2: Manual Moderation (Approval Snippets)
 To manually approve submitted clinic documents or public media via SQL Editor:

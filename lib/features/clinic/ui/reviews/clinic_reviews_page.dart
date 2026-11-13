@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/theme/context_ext.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../state/app_controller.dart';
 import '../../../../widgets/buttons.dart';
 import '../../../../widgets/common.dart';
 import '../../models/clinic_enums.dart';
@@ -25,6 +26,13 @@ class _ClinicReviewsPageState extends State<ClinicReviewsPage> {
   @override
   Widget build(BuildContext context) {
     final clinicCtrl = context.watch<ClinicController>();
+    final appCtrl = context.watch<AppController>();
+    if (appCtrl.focusUnansweredReviews && !_unansweredOnly) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _unansweredOnly = true);
+        appCtrl.focusUnansweredReviews = false;
+      });
+    }
     final c = context.c;
     final stats = clinicCtrl.reviewStats;
     final reviews = clinicCtrl.reviews;

@@ -45,3 +45,11 @@ This document records key design decisions, technical trade-offs, and security c
 ## 10. Supabase Sign-up Database Failures
 - **Decision**: Add `0003_profiles_account_type.sql` as a forward-only migration to add and constrain `profiles.account_type`, backfilling existing null values as `patient`.
 - **Rationale**: Supabase Auth logs confirmed that `handle_new_user()` inserts `account_type` but the deployed `profiles` table did not have that column. The original migration uses `CREATE TABLE IF NOT EXISTS`, which does not reconcile a pre-existing table with its declared columns. Do not modify migrations `0001` or `0002`; apply migration `0003` to the Supabase project before retrying signup.
+
+## 11. Clinic UX Simplification
+- **Decision**: Keep clinic-management navigation focused on the operational home, operations, staff, reviews/feedback, profile/legal, and settings. Legacy demo destinations stay inaccessible while the demo feature flag is disabled; authentication and verification gates remain authoritative.
+- **Rationale**: Clinic administrators should reach actionable verification and daily-operation tasks without seeing unrelated demo modules. Status changes continue to use existing controller/repository RPC paths.
+
+## 12. Clinic Location Map Tiles
+- **Decision**: The onboarding location picker uses OpenStreetMap tiles and displays attribution with a link to the OSM copyright page. The map only writes coordinates after an explicit map tap; GPS and manual coordinate entry remain available.
+- **Rationale and limitation**: `tile.openstreetmap.org` is a community-operated public service with a usage policy and no production availability guarantee. The app must not bulk-download or prefetch tiles. For sustained production traffic or offline use, configure a compliant hosted tile provider and follow its licensing, attribution, and caching requirements.

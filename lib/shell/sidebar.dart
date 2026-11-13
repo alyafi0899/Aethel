@@ -26,10 +26,8 @@ class Sidebar extends StatelessWidget {
     final clinicCtrl = context.watch<ClinicController>();
 
     final c = context.c;
-    final data = ctrl.data;
 
-    final String clinicName =
-        clinicCtrl.clinic?.clinicName ?? data.facilityName;
+    final String clinicName = clinicCtrl.clinic?.clinicName ?? 'Klinik Anda';
     final String roleLabel = authCtrl.membership?.role.label ??
         authCtrl.profile?.accountType.toUpperCase() ??
         ctrl.activeUserRole;
@@ -46,36 +44,30 @@ class Sidebar extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(10, 3, 10, 25),
                 children: [
-                  for (final section in ctrl.navSections) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 13, 10, 5),
-                      child: Text(
-                        section.title,
-                        style: context.sLabel.copyWith(
-                          color: c.sidebarMuted,
-                          letterSpacing: 1.2,
-                          fontSize: 9,
-                        ),
-                      ),
+                  for (final page in ctrl.navSections.expand((s) => s.pages))
+                    _NavItem(
+                      page: page,
+                      active: ctrl.page == page,
+                      badge: page == AppPage.clinicReviews &&
+                              (clinicCtrl.reviewStats.unanswered +
+                                      clinicCtrl.unreadFeedbackCount) >
+                                  0
+                          ? NavBadge(
+                              '${clinicCtrl.reviewStats.unanswered + clinicCtrl.unreadFeedbackCount}',
+                              alert: true)
+                          : page == AppPage.clinicProfile &&
+                                  clinicCtrl.openAlertsCount > 0
+                              ? NavBadge('${clinicCtrl.openAlertsCount}',
+                                  alert: true)
+                              : null,
+                      onTap: () {
+                        ctrl.go(page);
+                        onNavigate?.call();
+                      },
                     ),
-                    for (final page in section.pages)
-                      _NavItem(
-                        page: page,
-                        active: ctrl.page == page,
-                        badge: data.navBadges[page],
-                        onTap: () {
-                          if (page == AppPage.notifications) {
-                            ctrl.clearNotifBadge();
-                          }
-                          ctrl.go(page);
-                          onNavigate?.call();
-                        },
-                      ),
-                  ],
                 ],
               ),
             ),
-            const _HelpCard(),
           ],
         ),
       ),
@@ -300,52 +292,6 @@ class _NavItem extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _HelpCard extends StatelessWidget {
-  const _HelpCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-      padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        color: const Color(0xFF182A3D),
-        border: Border.all(color: const Color(0x12FFFFFF)),
-        borderRadius: BorderRadius.circular(context.m.radius),
-      ),
-      child: Row(
-        children: [
-          const Icon(AppIcons.shield, size: 18, color: Color(0xFF7BD5CC)),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Dukungan Sistem',
-                  style: context.sStrong.copyWith(
-                    color: const Color(0xFFD8E3EC),
-                    fontSize: 11,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Bantuan Prometheon OS',
-                  style: context.sSmall.copyWith(
-                    color: const Color(0xFF71859A),
-                    fontSize: 9.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(AppIcons.chevron, size: 14, color: Color(0xFF71859A)),
-        ],
       ),
     );
   }

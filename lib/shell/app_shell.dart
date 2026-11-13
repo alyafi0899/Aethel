@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/config/feature_flags.dart';
 import '../core/responsive.dart';
 import '../core/theme/context_ext.dart';
 import '../data/models.dart';
@@ -9,10 +10,13 @@ import '../features/auth/ui/legal_consent_dialog.dart';
 import '../features/clinic/data/legal_consent_repository.dart';
 import '../features/clinic/state/clinic_controller.dart';
 import '../features/clinic/ui/compliance_page.dart';
+import '../features/clinic/ui/clinic_settings_page.dart';
 import '../features/clinic/ui/feedback/clinic_feedback_page.dart';
 import '../features/clinic/ui/health_workers/health_worker_list_page.dart';
+import '../features/clinic/ui/home_page.dart';
 import '../features/clinic/ui/onboarding_wizard_page.dart';
-import '../features/clinic/ui/reviews/clinic_reviews_page.dart';
+import '../features/clinic/ui/profile_legal_page.dart';
+import '../features/clinic/ui/reviews_feedback_page.dart';
 import '../features/operations/ui/internal_operations_page.dart';
 import '../features/operations/ui/public_operations_page.dart';
 import '../pages/appointments_page.dart';
@@ -96,11 +100,13 @@ class _AppShellState extends State<AppShell> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Could not load clinic data', style: context.sH2),
+              Text('Data klinik belum dapat dimuat', style: context.sH2),
               const SizedBox(height: 6),
-              Text('${ctrl.error}', style: context.sSmall),
+              Text('Periksa koneksi internet, lalu coba lagi.',
+                  style: context.sSmall),
               const SizedBox(height: 14),
-              AppButton('Retry', kind: BtnKind.primary, onPressed: ctrl.load),
+              AppButton('Coba lagi',
+                  kind: BtnKind.primary, onPressed: ctrl.load),
             ],
           ),
         ),
@@ -183,18 +189,72 @@ class _AppShellState extends State<AppShell> {
     }
 
     return Scaffold(
-      drawer: Drawer(
-        width: 254,
-        backgroundColor: context.c.sidebar,
-        shape: const RoundedRectangleBorder(),
-        child: Builder(
-          builder: (ctx) => Sidebar(
-            onNavigate: () => Navigator.of(ctx).pop(),
-            onClose: () => Navigator.of(ctx).pop(),
-          ),
+      body: content,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _mobileIndex(ctrl.page),
+        onDestinationSelected: (index) {
+          if (index == 4) {
+            _showMoreSheet(context, ctrl);
+            return;
+          }
+          ctrl.go([
+            AppPage.dashboard,
+            AppPage.clinicOperationsInternal,
+            AppPage.clinicStaff,
+            AppPage.clinicReviews,
+          ][index]);
+        },
+        destinations: const [
+          NavigationDestination(
+              icon: Icon(Icons.home_outlined), label: 'Beranda'),
+          NavigationDestination(
+              icon: Icon(Icons.health_and_safety_outlined),
+              label: 'Operasional'),
+          NavigationDestination(
+              icon: Icon(Icons.badge_outlined), label: 'Tenaga'),
+          NavigationDestination(
+              icon: Icon(Icons.rate_review_outlined), label: 'Ulasan'),
+          NavigationDestination(icon: Icon(Icons.more_horiz), label: 'Lainnya'),
+        ],
+      ),
+    );
+  }
+
+  int _mobileIndex(AppPage page) => switch (page) {
+        AppPage.dashboard => 0,
+        AppPage.clinicOperationsInternal => 1,
+        AppPage.clinicStaff => 2,
+        AppPage.clinicReviews || AppPage.clinicFeedback => 3,
+        _ => 4,
+      };
+
+  void _showMoreSheet(BuildContext context, AppController controller) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.business_outlined),
+              title: const Text('Profil & Legal'),
+              onTap: () {
+                Navigator.pop(context);
+                controller.go(AppPage.clinicProfile);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings_outlined),
+              title: const Text('Pengaturan'),
+              onTap: () {
+                Navigator.pop(context);
+                controller.go(AppPage.settings);
+              },
+            ),
+          ],
         ),
       ),
-      body: content,
     );
   }
 }
@@ -207,6 +267,7 @@ class _PageBody extends StatelessWidget {
     switch (page) {
       // KLINIK Group
       case AppPage.clinicProfile:
+        return const ProfileLegalPage();
       case AppPage.clinicServices:
       case AppPage.clinicLegal:
       case AppPage.clinicEmr:
@@ -218,7 +279,7 @@ class _PageBody extends StatelessWidget {
       case AppPage.clinicOperationsPublic:
         return const PublicOperationsPage();
       case AppPage.clinicReviews:
-        return const ClinicReviewsPage();
+        return const ReviewsFeedbackPage();
       case AppPage.clinicFeedback:
         return const ClinicFeedbackPage();
       case AppPage.clinicCompliance:
@@ -226,7 +287,7 @@ class _PageBody extends StatelessWidget {
 
       // Demo Pages
       case AppPage.dashboard:
-        return const DashboardPage();
+        return kShowDemoModules ? const DashboardPage() : const HomePage();
       case AppPage.operations:
         return const OperationsPage();
       case AppPage.appointments:
@@ -254,7 +315,9 @@ class _PageBody extends StatelessWidget {
       case AppPage.roles:
         return const PermissionsPage();
       case AppPage.settings:
-        return const SettingsPage();
+        return kShowDemoModules
+            ? const SettingsPage()
+            : const ClinicSettingsPage();
       case AppPage.workflow:
       case AppPage.nurses:
       case AppPage.membership:
@@ -267,6 +330,26 @@ class _PageBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phone = Breakpoints.isPhone(context);
+    if (!kShowDemoModules &&
+        (page == AppPage.dashboard ||
+            page == AppPage.clinicProfile ||
+            page == AppPage.clinicReviews ||
+            page == AppPage.settings)) {
+      return Padding(
+        padding: EdgeInsets.fromLTRB(
+          phone ? 13 : 30,
+          phone ? 20 : 27,
+          phone ? 13 : 30,
+          20,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1600),
+            child: _page(),
+          ),
+        ),
+      );
+    }
     return SingleChildScrollView(
       key: ValueKey(page),
       padding: EdgeInsets.fromLTRB(

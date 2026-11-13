@@ -1,12 +1,14 @@
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/context_ext.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/image_crop_service.dart';
 import '../../../widgets/buttons.dart';
 import '../data/document_repository.dart';
 import '../models/clinic_document_model.dart';
@@ -62,37 +64,120 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
   }
 
   Future<void> _pickAndUpload() async {
+    final useCamera = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Ambil foto dengan kamera'),
+              onTap: () => Navigator.pop(context, true),
+            ),
+            ListTile(
+              leading: const Icon(Icons.file_upload_outlined),
+              title: const Text('Pilih berkas'),
+              onTap: () => Navigator.pop(context, false),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (useCamera == null) return;
+
     setState(() {
       _uploading = true;
       _error = null;
     });
 
     try {
-      final files = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
-      );
-
-      if (files.isEmpty) {
-        if (mounted) setState(() => _uploading = false);
-        return;
+      late final Uint8List bytes;
+      late final String name;
+      late final String ext;
+      if (widget.workerDocType == WorkerDocumentType.profile_photo) {
+        late final String sourcePath;
+        late final String selectedName;
+        if (useCamera) {
+          final image = await ImagePicker().pickImage(
+            source: ImageSource.camera,
+            imageQuality: 100,
+          );
+          if (!mounted) return;
+          if (image == null) {
+            setState(() => _uploading = false);
+            return;
+          }
+          sourcePath = image.path;
+          selectedName = image.name;
+        } else {
+          final files = await FilePicker.pickFiles(
+            type: FileType.custom,
+            allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+          );
+          if (!mounted) return;
+          if (files.isEmpty) {
+            setState(() => _uploading = false);
+            return;
+          }
+          final file = files.first;
+          sourcePath = resolveImageCropSourcePath(
+            filePath: file.path,
+            fileUri: file.uri,
+          );
+          selectedName = file.name;
+        }
+        final croppedBytes = await cropAndResizeImage(
+          context: context,
+          sourcePath: sourcePath,
+          ratioX: 3,
+          ratioY: 4,
+          title: 'Pangkas pasfoto formal',
+        );
+        if (!mounted) return;
+        if (croppedBytes == null) {
+          if (mounted) setState(() => _uploading = false);
+          return;
+        }
+        bytes = croppedBytes;
+        name = '${selectedName.replaceAll(RegExp(r'\.[^.]+$'), '')}.jpg';
+        ext = 'jpg';
+      } else if (useCamera) {
+        final image = await ImagePicker().pickImage(
+          source: ImageSource.camera,
+          imageQuality: 85,
+        );
+        if (image == null) {
+          if (mounted) setState(() => _uploading = false);
+          return;
+        }
+        bytes = await image.readAsBytes();
+        name = image.name;
+        ext = 'jpg';
+      } else {
+        final files = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+        );
+        if (files.isEmpty) {
+          if (mounted) setState(() => _uploading = false);
+          return;
+        }
+        final file = files.first;
+        bytes = await file.readAsBytes();
+        name = file.name;
+        ext = file.extension?.toLowerCase() ?? '';
       }
-
-      final file = files.first;
-      final Uint8List bytes = await file.readAsBytes();
-      final String name = file.name;
-      final int size = (await file.length()) ?? bytes.length;
 
       if (bytes.isEmpty) {
         throw Exception('Berkas tidak dapat dibaca atau kosong.');
       }
 
-      // 10 MB size check
-      if (size > 10 * 1024 * 1024) {
+      if (bytes.length > 10 * 1024 * 1024) {
         throw Exception('Ukuran berkas melebihi batas maksimal 10 MB.');
       }
 
-      final ext = file.extension?.toLowerCase() ?? '';
       final mimeType = ext == 'pdf'
           ? 'application/pdf'
           : (ext == 'webp'
@@ -130,6 +215,11 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
       if (mounted) {
         setState(() => _uploading = false);
         widget.onChanged?.call();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Terkirim. Tim kami akan meninjau ulang setelah berkas diperbarui.')),
+        );
       }
     } catch (e) {
       if (mounted) {

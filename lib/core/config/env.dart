@@ -9,4 +9,7 @@ class EnvConfig {
     'SUPABASE_PUBLISHABLE_KEY',
     defaultValue: 'sb_publishable_0FJxIsGzTDi8AeIj42utSQ_IPEKBWkZ',
   );
+
+  static const String supportWhatsApp =
+      String.fromEnvironment('SUPPORT_WHATSAPP');
 }

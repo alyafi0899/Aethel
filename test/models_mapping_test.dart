@@ -105,11 +105,15 @@ void main() {
         clinicId: 'c1',
         name: 'Ruang Periksa 1',
         kind: FacilityKind.consultation_room,
-        status: FacilityUnitStatus.available,
-        capacity: 2,
+        status: FacilityUnitStatus.occupied,
+        capacity: 0,
+        notes: 'Dekat ruang tunggu',
       );
-      expect(ClinicFacilityModel.fromJson(facility.toJson()).name,
-          'Ruang Periksa 1');
+      final facilityRoundTrip = ClinicFacilityModel.fromJson(facility.toJson());
+      expect(facilityRoundTrip.name, 'Ruang Periksa 1');
+      expect(facilityRoundTrip.capacity, 0);
+      expect(facilityRoundTrip.status, FacilityUnitStatus.occupied);
+      expect(facilityRoundTrip.notes, 'Dekat ruang tunggu');
 
       const equipment = ClinicEquipmentModel(
         id: 'eq1',
@@ -117,8 +121,14 @@ void main() {
         name: 'Stetoskop',
         category: EquipmentCategory.medical,
         quantity: 5,
+        condition: 'Perlu Kalibrasi',
+        notes: 'Merek contoh',
       );
-      expect(ClinicEquipmentModel.fromJson(equipment.toJson()).quantity, 5);
+      final equipmentRoundTrip =
+          ClinicEquipmentModel.fromJson(equipment.toJson());
+      expect(equipmentRoundTrip.quantity, 5);
+      expect(equipmentRoundTrip.condition, 'Perlu Kalibrasi');
+      expect(equipmentRoundTrip.notes, 'Merek contoh');
 
       const medicine = ClinicMedicineModel(
         id: 'm1',
@@ -128,8 +138,10 @@ void main() {
         strength: '500 mg',
         isAvailable: true,
       );
-      expect(
-          ClinicMedicineModel.fromJson(medicine.toJson()).name, 'Paracetamol');
+      final medicineRoundTrip = ClinicMedicineModel.fromJson(medicine.toJson());
+      expect(medicineRoundTrip.name, 'Paracetamol');
+      expect(medicineRoundTrip.dosageForm, 'Tablet');
+      expect(medicineRoundTrip.strength, '500 mg');
 
       const hours = ClinicOperatingHoursModel(
         id: 'h1',
@@ -138,9 +150,18 @@ void main() {
         isOpen: true,
         openTime: '08:00',
         closeTime: '17:00',
+        breakStart: '12:00',
+        breakEnd: '13:00',
       );
-      expect(
-          ClinicOperatingHoursModel.fromJson(hours.toJson()).openTime, '08:00');
+      final hoursJson = hours.toJson();
+      expect(hoursJson['open_time'], '08:00:00');
+      expect(hoursJson['close_time'], '17:00:00');
+      expect(hoursJson['break_start'], '12:00:00');
+      expect(hoursJson['break_end'], '13:00:00');
+      final hoursRoundTrip = ClinicOperatingHoursModel.fromJson(hoursJson);
+      expect(hoursRoundTrip.openTime, '08:00:00');
+      expect(hoursRoundTrip.breakStart, '12:00:00');
+      expect(hours.copyWith(clearBreakStart: true).breakStart, isNull);
     });
 
     test('OrgStructure, EmrSettings, and Documents serialization', () {
@@ -149,10 +170,13 @@ void main() {
         clinicId: 'c1',
         personName: 'Dr. Andi',
         position: 'Direktur Klinik',
+        healthWorkerId: 'worker-1',
         sortOrder: 1,
       );
-      expect(ClinicOrgStructureModel.fromJson(org.toJson()).position,
-          'Direktur Klinik');
+      final orgRoundTrip = ClinicOrgStructureModel.fromJson(org.toJson());
+      expect(orgRoundTrip.position, 'Direktur Klinik');
+      expect(orgRoundTrip.healthWorkerId, 'worker-1');
+      expect(orgRoundTrip.sortOrder, 1);
 
       const emr = ClinicEmrSettingsModel(
         clinicId: 'c1',

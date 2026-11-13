@@ -49,19 +49,19 @@ class UserProfile {
 /// Every page of the app. Add a value here + a case in `AppShell` to add a page.
 enum AppPage {
   // KLINIK Group
-  clinicProfile('Profil Klinik', Icons.business_outlined),
+  clinicProfile('Profil & Legal', Icons.business_outlined),
   clinicServices('Layanan & Fasilitas', Icons.medical_services_outlined),
   clinicLegal('Administrasi & Legal', Icons.gavel_outlined),
   clinicEmr('Sistem RME', Icons.computer_outlined),
   clinicStaff('Tenaga Kesehatan', Icons.badge_outlined),
-  clinicOperationsInternal('Operasional Internal', Icons.dashboard_outlined),
+  clinicOperationsInternal('Operasional', Icons.dashboard_outlined),
   clinicOperationsPublic('Tampilan Publik', Icons.public_outlined),
-  clinicReviews('Ulasan & Rating', Icons.star_outline_rounded),
+  clinicReviews('Ulasan & Masukan', Icons.star_outline_rounded),
   clinicFeedback('Masukan Privat', Icons.feedback_outlined),
   clinicCompliance('Kepatuhan & Masa Berlaku', Icons.verified_outlined),
 
   // Demo Pages
-  dashboard('Dashboard', Icons.grid_view_rounded),
+  dashboard('Beranda', Icons.grid_view_rounded),
   operations('Operations Overview', Icons.monitor_heart_outlined),
   appointments('Appointments', Icons.calendar_today_outlined),
   triage('Triage & Screening', Icons.verified_user_outlined),
@@ -80,7 +80,7 @@ enum AppPage {
   reports('Reports', Icons.monitor_heart_outlined),
   notifications('Notifications', Icons.notifications_none_rounded),
   roles('Roles & Permissions', Icons.verified_user_outlined),
-  settings('Settings', Icons.settings_outlined);
+  settings('Pengaturan', Icons.settings_outlined);
 
   const AppPage(this.label, this.icon);
   final String label;

@@ -21,7 +21,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
-  testWidgets('dashboard renders with mock data', (tester) async {
+  testWidgets('clinic home renders with mock data', (tester) async {
     tester.view.physicalSize = const Size(1500, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -90,7 +90,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Good morning, Elena'), findsOneWidget);
-    expect(find.text('PROMETHEON'), findsOneWidget);
+    expect(find.text('Beranda'), findsWidgets);
+    expect(find.text('Prometheon Central Clinic'), findsWidgets);
   });
 }

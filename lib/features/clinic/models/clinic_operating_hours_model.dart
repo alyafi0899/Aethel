@@ -62,11 +62,23 @@ class ClinicOperatingHoursModel {
       'clinic_id': clinicId,
       'day_of_week': dayOfWeek,
       'is_open': isOpen,
-      'open_time': openTime,
-      'close_time': closeTime,
-      'break_start': breakStart,
-      'break_end': breakEnd,
+      'open_time': _databaseTime(openTime),
+      'close_time': _databaseTime(closeTime),
+      'break_start': _databaseTime(breakStart),
+      'break_end': _databaseTime(breakEnd),
     };
+  }
+
+  static String? _databaseTime(String? value) {
+    if (value == null) return null;
+    final parts = value.split(':');
+    if (parts.length == 2) {
+      return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}:00';
+    }
+    if (parts.length == 3) {
+      return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}:${parts[2].padLeft(2, '0')}';
+    }
+    return value;
   }
 
   ClinicOperatingHoursModel copyWith({
@@ -78,6 +90,8 @@ class ClinicOperatingHoursModel {
     String? closeTime,
     String? breakStart,
     String? breakEnd,
+    bool clearBreakStart = false,
+    bool clearBreakEnd = false,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -88,8 +102,8 @@ class ClinicOperatingHoursModel {
       isOpen: isOpen ?? this.isOpen,
       openTime: openTime ?? this.openTime,
       closeTime: closeTime ?? this.closeTime,
-      breakStart: breakStart ?? this.breakStart,
-      breakEnd: breakEnd ?? this.breakEnd,
+      breakStart: clearBreakStart ? null : breakStart ?? this.breakStart,
+      breakEnd: clearBreakEnd ? null : breakEnd ?? this.breakEnd,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

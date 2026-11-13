@@ -1,14 +1,16 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/config/feature_flags.dart';
+import '../../../core/theme/clinic_colors.dart';
 import '../../../core/theme/context_ext.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../widgets/buttons.dart';
 import '../../../widgets/common.dart';
-import '../../../widgets/forms.dart';
-import '../../clinic/models/clinic_enums.dart';
 import '../../clinic/state/clinic_controller.dart';
+import '../models/clinic_operations_models.dart';
+import '../models/operational_status.dart';
 
 class InternalOperationsPage extends StatefulWidget {
   const InternalOperationsPage({super.key});
@@ -18,486 +20,418 @@ class InternalOperationsPage extends StatefulWidget {
 }
 
 class _InternalOperationsPageState extends State<InternalOperationsPage> {
-  Timer? _debounceTimer;
-  String? _saveStatus = 'Tersimpan';
-
-  final _totalQueuesCtrl = TextEditingController();
-  final _currentQueueCtrl = TextEditingController();
-  final _avgWaitCtrl = TextEditingController();
-  final _registeredPatientsCtrl = TextEditingController();
-  final _dailyVisitorsCtrl = TextEditingController();
-  final _dailyAppointmentsCtrl = TextEditingController();
-  final _cancelledAppointmentsCtrl = TextEditingController();
-  final _completedConsultationsCtrl = TextEditingController();
-
-  QueueProcessStatus _queueStatus = QueueProcessStatus.closed;
-  FacilityOperatingStatus _facilityStatus = FacilityOperatingStatus.closed;
-
-  bool _initialized = false;
+  Timer? _saveTimer;
+  OperationalMode _mode = OperationalMode.closed;
+  int _currentQueue = 0;
+  int _totalQueues = 0;
+  int _waitMinutes = 0;
+  String _saveStatus = 'Tersimpan';
+  bool _advancedExpanded = false;
+  ClinicOperationsInternalModel? _lastSaved;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_initialized) {
-      _initFromOperations();
-      _initialized = true;
+    final ops = context.read<ClinicController>().internalOperations;
+    if (ops != null && _lastSaved == null) {
+      _applyModel(ops);
     }
   }
 
-  void _initFromOperations() {
-    final ops = context.read<ClinicController>().internalOperations;
-    if (ops != null) {
-      _totalQueuesCtrl.text = ops.totalQueues.toString();
-      _currentQueueCtrl.text = ops.currentQueueNumber.toString();
-      _avgWaitCtrl.text = ops.averageWaitTime.toString();
-      _registeredPatientsCtrl.text = ops.totalRegisteredPatients.toString();
-      _dailyVisitorsCtrl.text = ops.totalDailyVisitors.toString();
-      _dailyAppointmentsCtrl.text = ops.dailyAppointmentsCount.toString();
-      _cancelledAppointmentsCtrl.text =
-          ops.cancelledAppointmentsCount.toString();
-      _completedConsultationsCtrl.text =
-          ops.totalCompletedConsultations.toString();
-      _queueStatus = ops.queueProcessStatus;
-      _facilityStatus = ops.facilityStatus;
-    }
+  void _applyModel(ClinicOperationsInternalModel ops) {
+    _mode = OperationalMode.fromDatabase(
+      facilityStatus: ops.facilityStatus,
+      queueStatus: ops.queueProcessStatus,
+    );
+    _currentQueue = ops.currentQueueNumber;
+    _totalQueues = ops.totalQueues;
+    _waitMinutes = ops.averageWaitTime;
+    _lastSaved = ops;
   }
 
   @override
   void dispose() {
-    _debounceTimer?.cancel();
-    _totalQueuesCtrl.dispose();
-    _currentQueueCtrl.dispose();
-    _avgWaitCtrl.dispose();
-    _registeredPatientsCtrl.dispose();
-    _dailyVisitorsCtrl.dispose();
-    _dailyAppointmentsCtrl.dispose();
-    _cancelledAppointmentsCtrl.dispose();
-    _completedConsultationsCtrl.dispose();
+    _saveTimer?.cancel();
     super.dispose();
   }
 
-  void _onDataChanged() {
+  ClinicOperationsInternalModel? _updatedModel(
+      ClinicOperationsInternalModel? current) {
+    if (current == null) return null;
+    return current.copyWith(
+      facilityStatus: _mode.facilityStatus,
+      queueProcessStatus: _mode.queueStatus,
+      currentQueueNumber: _currentQueue,
+      totalQueues: _totalQueues,
+      averageWaitTime: _waitMinutes,
+    );
+  }
+
+  void _saveDebounced() {
     setState(() => _saveStatus = 'Menyimpan...');
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 600), () async {
-      final clinicCtrl = context.read<ClinicController>();
-      final currentOps = clinicCtrl.internalOperations;
-      if (currentOps == null) return;
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 600), _save);
+  }
 
-      final updated = currentOps.copyWith(
-        totalQueues: int.tryParse(_totalQueuesCtrl.text) ?? 0,
-        currentQueueNumber: int.tryParse(_currentQueueCtrl.text) ?? 0,
-        queueProcessStatus: _queueStatus,
-        averageWaitTime: int.tryParse(_avgWaitCtrl.text) ?? 0,
-        totalRegisteredPatients:
-            int.tryParse(_registeredPatientsCtrl.text) ?? 0,
-        totalDailyVisitors: int.tryParse(_dailyVisitorsCtrl.text) ?? 0,
-        dailyAppointmentsCount: int.tryParse(_dailyAppointmentsCtrl.text) ?? 0,
-        cancelledAppointmentsCount:
-            int.tryParse(_cancelledAppointmentsCtrl.text) ?? 0,
-        facilityStatus: _facilityStatus,
-        totalCompletedConsultations:
-            int.tryParse(_completedConsultationsCtrl.text) ?? 0,
-      );
-
-      final ok = await clinicCtrl.updateInternalOperations(updated);
-      if (mounted) {
-        setState(() {
-          _saveStatus = ok ? 'Tersimpan ✓' : 'Gagal menyimpan!';
-        });
-      }
+  Future<void> _save() async {
+    _saveTimer?.cancel();
+    final controller = context.read<ClinicController>();
+    final updated = _updatedModel(controller.internalOperations);
+    if (updated == null) {
+      setState(() => _saveStatus = 'Data operasional belum tersedia');
+      return;
+    }
+    final saved = await controller.updateInternalOperations(updated);
+    if (!mounted) return;
+    setState(() {
+      _saveStatus = saved
+          ? 'Tersimpan ✓'
+          : 'Gagal menyimpan${controller.errorMessage == null ? '' : ': ${controller.errorMessage}'}';
+      if (saved) _lastSaved = updated;
     });
   }
 
-  void _incrementQueue() {
-    final cur = int.tryParse(_currentQueueCtrl.text) ?? 0;
-    final total = int.tryParse(_totalQueuesCtrl.text) ?? 0;
-    _currentQueueCtrl.text = (cur + 1).toString();
-    if (cur + 1 > total) {
-      _totalQueuesCtrl.text = (cur + 1).toString();
-    }
-    _onDataChanged();
+  Future<void> _setMode(OperationalMode mode) async {
+    setState(() {
+      _mode = mode;
+      _saveStatus = 'Menyimpan...';
+    });
+    await _save();
   }
 
-  void _decrementQueue() {
-    final cur = int.tryParse(_currentQueueCtrl.text) ?? 0;
-    if (cur > 0) {
-      _currentQueueCtrl.text = (cur - 1).toString();
-      _onDataChanged();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final clinicCtrl = context.watch<ClinicController>();
-    final c = context.c;
-    final ops = clinicCtrl.internalOperations;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Layer Operasional Klinik (Internal)',
-                      style: context.sH2),
-                  Text(
-                      'Dasbor pemantauan antrean, ketersediaan fasilitas, dan statistik harian.',
-                      style: context.sSmall),
-                ],
-              ),
-              Row(
-                children: [
-                  if (_saveStatus != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _saveStatus!,
-                        style: context.sLabel.copyWith(
-                            color: Colors.green.shade800, fontSize: 12),
-                      ),
-                    ),
-                  const SizedBox(width: 12),
-                  AppButton(
-                    'Hitung Ulang',
-                    icon: Icons.sync,
-                    kind: BtnKind.secondary,
-                    onPressed: () => clinicCtrl.refreshOperations(),
-                  ),
-                ],
-              ),
-            ],
+  Future<void> _restartQueue() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mulai ulang antrean?'),
+        content: const Text(
+            'Nomor antrean dan jumlah antrean hari ini akan kembali ke 0.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
           ),
-          const SizedBox(height: 24),
-
-          // Queue & Facility Control Card
-          AppCard(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('1. Kontrol Antrean & Status Fasilitas',
-                    style: context.sH2.copyWith(fontSize: 18)),
-                const SizedBox(height: 16),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Queue counter
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: c.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: c.border),
-                        ),
-                        child: Column(
-                          children: [
-                            Text('Nomor Antrean Saat Ini',
-                                style: context.sSmall),
-                            const SizedBox(height: 8),
-                            Text(
-                              _currentQueueCtrl.text.isEmpty
-                                  ? '0'
-                                  : _currentQueueCtrl.text,
-                              style: context.sH1.copyWith(
-                                  fontSize: 48,
-                                  color: c.accent,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                IconButton.filled(
-                                  icon: const Icon(Icons.remove),
-                                  onPressed: _decrementQueue,
-                                ),
-                                const SizedBox(width: 16),
-                                IconButton.filled(
-                                  icon: const Icon(Icons.add),
-                                  onPressed: _incrementQueue,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Status Pemrosesan Antrean',
-                              style: context.sBody
-                                  .copyWith(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 6),
-                          DropdownButtonFormField<QueueProcessStatus>(
-                            initialValue: _queueStatus,
-                            items: QueueProcessStatus.values
-                                .map((s) => DropdownMenuItem(
-                                    value: s, child: Text(s.label)))
-                                .toList(),
-                            onChanged: (v) {
-                              if (v != null) {
-                                setState(() => _queueStatus = v);
-                                _onDataChanged();
-                              }
-                            },
-                            decoration: const InputDecoration(
-                                border: OutlineInputBorder()),
-                          ),
-                          const SizedBox(height: 16),
-                          Text('Status Operasional Fasilitas',
-                              style: context.sBody
-                                  .copyWith(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 6),
-                          DropdownButtonFormField<FacilityOperatingStatus>(
-                            initialValue: _facilityStatus,
-                            items: FacilityOperatingStatus.values
-                                .map((s) => DropdownMenuItem(
-                                    value: s, child: Text(s.label)))
-                                .toList(),
-                            onChanged: (v) {
-                              if (v != null) {
-                                setState(() => _facilityStatus = v);
-                                _onDataChanged();
-                              }
-                            },
-                            decoration: const InputDecoration(
-                                border: OutlineInputBorder()),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppFormField(
-                        label: 'Total Antrean Terdaftar',
-                        hint: '0',
-                        controller: _totalQueuesCtrl,
-                        keyboardType: TextInputType.number,
-                        onChanged: (_) => _onDataChanged(),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: AppFormField(
-                        label: 'Rata-rata Waktu Tunggu (Menit)',
-                        hint: '15',
-                        controller: _avgWaitCtrl,
-                        keyboardType: TextInputType.number,
-                        onChanged: (_) => _onDataChanged(),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Daily Statistics Card
-          AppCard(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('2. Statistik Operasional Hari Ini',
-                        style: context.sH2.copyWith(fontSize: 18)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        'Diisi manual (Akan terisi otomatis setelah modul appointment aktif)',
-                        style: context.sLabel.copyWith(
-                            color: Colors.amber.shade900, fontSize: 11),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppFormField(
-                        label: 'Pasien Terdaftar',
-                        hint: '0',
-                        controller: _registeredPatientsCtrl,
-                        keyboardType: TextInputType.number,
-                        onChanged: (_) => _onDataChanged(),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: AppFormField(
-                        label: 'Pengunjung Harian',
-                        hint: '0',
-                        controller: _dailyVisitorsCtrl,
-                        keyboardType: TextInputType.number,
-                        onChanged: (_) => _onDataChanged(),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: AppFormField(
-                        label: 'Konsultasi Selesai',
-                        hint: '0',
-                        controller: _completedConsultationsCtrl,
-                        keyboardType: TextInputType.number,
-                        onChanged: (_) => _onDataChanged(),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppFormField(
-                        label: 'Jumlah Janji Temu (Appointments)',
-                        hint: '0',
-                        controller: _dailyAppointmentsCtrl,
-                        keyboardType: TextInputType.number,
-                        onChanged: (_) => _onDataChanged(),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: AppFormField(
-                        label: 'Janji Temu Dibatalkan',
-                        hint: '0',
-                        controller: _cancelledAppointmentsCtrl,
-                        keyboardType: TextInputType.number,
-                        onChanged: (_) => _onDataChanged(),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Read-only Auto Metrics Card
-          AppCard(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('3. Indikator Otomatis Server (Hanya-Baca)',
-                        style: context.sH2.copyWith(fontSize: 18)),
-                    Text(
-                        'Terakhir diperbarui: ${AppFormatters.formatDateTime(ops?.lastUpdateTimestamp)}',
-                        style: context.sSmall.copyWith(fontSize: 12)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                GridView.count(
-                  crossAxisCount: 4,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 2.2,
-                  children: [
-                    _metricBlock(
-                        'Dokter Tersedia',
-                        '${ops?.totalDoctorsAvailable ?? 0}',
-                        Icons.medical_services_outlined,
-                        Colors.blue),
-                    _metricBlock(
-                        'Staf Bertugas',
-                        '${ops?.staffOnDutyCount ?? 0}',
-                        Icons.people_outline,
-                        Colors.teal),
-                    _metricBlock('Ruang Aktif', '${ops?.activeRoomsCount ?? 0}',
-                        Icons.meeting_room_outlined, Colors.purple),
-                    _metricBlock(
-                        'Ruang Tersedia',
-                        '${ops?.availableRoomsCount ?? 0}',
-                        Icons.door_sliding_outlined,
-                        Colors.green),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text('Jenis Layanan Aktif:',
-                    style: context.sBody.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                if (ops == null || ops.serviceTypes.isEmpty)
-                  Text('Belum ada jenis layanan aktif.', style: context.sSmall)
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: ops.serviceTypes
-                        .map((type) => Chip(
-                              label: Text(type),
-                              backgroundColor: c.surface,
-                            ))
-                        .toList(),
-                  ),
-              ],
-            ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Mulai ulang'),
           ),
         ],
       ),
     );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      _currentQueue = 0;
+      _totalQueues = 0;
+    });
+    await _save();
   }
 
-  Widget _metricBlock(String title, String value, IconData icon, Color color) {
-    return Builder(builder: (context) {
-      final c = context.c;
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: c.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: c.border),
+  void _nextQueue() {
+    setState(() {
+      _currentQueue++;
+      if (_totalQueues < _currentQueue) _totalQueues = _currentQueue;
+    });
+    _saveDebounced();
+  }
+
+  void _previousQueue() {
+    if (_currentQueue == 0) return;
+    setState(() => _currentQueue--);
+    _saveDebounced();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<ClinicController>();
+    final ops = controller.internalOperations;
+    final preview = controller.publicPreview;
+    final c = context.c;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Operasional', style: context.sH2),
+        const SizedBox(height: 4),
+        Text('Atur layanan hari ini dan kelola nomor antrean.',
+            style: context.sSmall),
+        const SizedBox(height: 16),
+        AppCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('Status klinik hari ini', style: context.sH3),
+                  ),
+                  Text(_saveStatus,
+                      style: context.sSmall.copyWith(
+                        color: _saveStatus.startsWith('Gagal')
+                            ? c.fg(Tone.red)
+                            : c.muted,
+                      )),
+                  if (_saveStatus.startsWith('Gagal')) ...[
+                    const SizedBox(width: 8),
+                    TextButton(
+                        onPressed: _save, child: const Text('Coba lagi')),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 12),
+              OperationalStatusControls(
+                selected: _mode,
+                onChanged: _setMode,
+              ),
+            ],
+          ),
         ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(value,
-                    style: context.sH2
-                        .copyWith(color: color, fontWeight: FontWeight.bold)),
-                Text(title, style: context.sSmall.copyWith(fontSize: 11)),
+        const SizedBox(height: 16),
+        AppCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Antrean pasien', style: context.sH3),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  IconButton.filledTonal(
+                    tooltip: 'Mundur satu nomor',
+                    onPressed: _previousQueue,
+                    icon: const Icon(Icons.remove),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text('Nomor yang sedang dilayani',
+                            style: context.sSmall),
+                        Text(
+                          '$_currentQueue',
+                          style: context.sH1.copyWith(
+                            fontSize: 50,
+                            color: c.accent,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text('Dari $_totalQueues antrean hari ini',
+                            style: context.sSmall),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: _nextQueue,
+                    icon: const Icon(Icons.campaign_outlined),
+                    label: const Text('Panggil nomor berikutnya'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  const Icon(Icons.hourglass_bottom),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Perkiraan waktu tunggu: $_waitMinutes menit',
+                        style: context.sBody),
+                  ),
+                  IconButton(
+                    tooltip: 'Kurangi waktu tunggu',
+                    onPressed: _waitMinutes == 0
+                        ? null
+                        : () {
+                            setState(() => _waitMinutes--);
+                            _saveDebounced();
+                          },
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
+                  IconButton(
+                    tooltip: 'Tambah waktu tunggu',
+                    onPressed: () {
+                      setState(() => _waitMinutes++);
+                      _saveDebounced();
+                    },
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ],
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _restartQueue,
+                  icon: const Icon(Icons.restart_alt),
+                  label: const Text('Mulai ulang antrean hari ini'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        AppCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('Informasi yang dihitung otomatis',
+                        style: context.sH3),
+                  ),
+                  TextButton.icon(
+                    onPressed: controller.refreshOperations,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Perbarui'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _Metric(
+                      title: 'Dokter tersedia',
+                      value: '${ops?.totalDoctorsAvailable ?? 0}'),
+                  _Metric(
+                      title: 'Staf bertugas',
+                      value: '${ops?.staffOnDutyCount ?? 0}'),
+                  _Metric(
+                      title: 'Ruang tersedia',
+                      value: '${ops?.availableRoomsCount ?? 0}'),
+                  _Metric(
+                      title: 'Layanan aktif',
+                      value: '${ops?.serviceTypes.length ?? 0}'),
+                ],
+              ),
+              if (ops?.lastUpdateTimestamp != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                    'Terakhir diperbarui ${AppFormatters.formatDateTime(ops!.lastUpdateTimestamp)}',
+                    style: context.sSmall),
               ],
+              const Divider(height: 24),
+              Text('Tampilan untuk pasien', style: context.sStrong),
+              const SizedBox(height: 4),
+              Text(
+                preview == null
+                    ? 'Pratinjau belum tersedia. Ketuk Perbarui untuk mencoba lagi.'
+                    : 'Pasien melihat: ${ops == null ? preview.clinicStatus : OperationalMode.patientFacingStatus(facilityStatus: ops.facilityStatus, queueStatus: ops.queueProcessStatus)} · antrean ${preview.currentQueueNumber} · tunggu sekitar ${preview.estimatedWaitTime} menit',
+                style: context.sSmall,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              ListTile(
+                title: const Text('Pengaturan lanjutan'),
+                subtitle: const Text('Pemeliharaan dan pilihan tambahan'),
+                trailing: Icon(
+                    _advancedExpanded ? Icons.expand_less : Icons.expand_more),
+                onTap: () =>
+                    setState(() => _advancedExpanded = !_advancedExpanded),
+              ),
+              if (_advancedExpanded) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.build_outlined),
+                  title: const Text('Pemeliharaan'),
+                  subtitle:
+                      const Text('Tandai klinik sedang tidak melayani pasien'),
+                  trailing: Switch(
+                    value: _mode == OperationalMode.maintenance,
+                    onChanged: (enabled) => _setMode(enabled
+                        ? OperationalMode.maintenance
+                        : OperationalMode.closed),
+                  ),
+                ),
+                if (kShowManualOperationStats && ops != null)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Statistik manual saat ini: ${ops.totalRegisteredPatients} pasien terdaftar, ${ops.totalDailyVisitors} pengunjung.',
+                      style: context.sSmall,
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class OperationalStatusControls extends StatelessWidget {
+  const OperationalStatusControls({
+    super.key,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final OperationalMode selected;
+  final ValueChanged<OperationalMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        for (final mode in [
+          OperationalMode.open,
+          OperationalMode.breakTime,
+          OperationalMode.closed,
+        ])
+          SizedBox(
+            width: 150,
+            child: FilledButton.tonalIcon(
+              onPressed: () => onChanged(mode),
+              icon: Icon(switch (mode) {
+                OperationalMode.open => Icons.lock_open,
+                OperationalMode.breakTime => Icons.free_breakfast_outlined,
+                _ => Icons.lock_outline,
+              }),
+              label: Text(mode.label),
+              style: FilledButton.styleFrom(
+                backgroundColor: selected == mode
+                    ? context.c.primary.withValues(alpha: .18)
+                    : null,
+              ),
             ),
+          ),
+      ],
+    );
+  }
+}
+
+class _Metric extends StatelessWidget {
+  const _Metric({required this.title, required this.value});
+
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        constraints: const BoxConstraints(minWidth: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: context.c.surfaceAlt,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value, style: context.sH3),
+            const SizedBox(height: 3),
+            Text(title, style: context.sSmall),
           ],
         ),
       );
-    });
-  }
 }

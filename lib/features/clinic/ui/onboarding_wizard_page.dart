@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -10,23 +14,71 @@ import '../../../core/utils/validators.dart';
 import '../../../widgets/buttons.dart';
 import '../../../widgets/common.dart';
 import '../../../widgets/forms.dart';
+import '../../help/field_help.dart';
+import '../../help/support_actions.dart';
 import '../../auth/state/auth_controller.dart';
 import '../models/clinic_document_model.dart';
 import '../models/clinic_enums.dart';
 import '../models/clinic_equipment_model.dart';
 import '../models/clinic_facility_model.dart';
 import '../models/clinic_medicine_model.dart';
+import '../models/clinic_operating_hours_model.dart';
 import '../models/clinic_org_structure_model.dart';
+import '../models/onboarding_status_model.dart';
 
 import '../state/clinic_controller.dart';
 import '../widgets/document_upload_tile.dart';
 import '../widgets/public_media_uploader.dart';
+import '../widgets/rejected_items_panel.dart';
+import '../widgets/verification_timeline.dart';
 import 'health_workers/health_worker_form_dialog.dart';
 
+class _ClinicTemplate {
+  const _ClinicTemplate({
+    required this.name,
+    required this.services,
+    required this.rooms,
+    required this.equipment,
+  });
+
+  final String name;
+  final List<String> services;
+  final List<String> rooms;
+  final List<String> equipment;
+}
+
+const _clinicTemplates = [
+  _ClinicTemplate(
+    name: 'Klinik umum',
+    services: ['Umum'],
+    rooms: ['Ruang Konsultasi', 'Ruang Tindakan'],
+    equipment: ['Stetoskop', 'Tensimeter'],
+  ),
+  _ClinicTemplate(
+    name: 'Klinik gigi',
+    services: ['Gigi'],
+    rooms: ['Ruang Konsultasi', 'Ruang Tindakan'],
+    equipment: ['Dental unit', 'Autoklaf'],
+  ),
+  _ClinicTemplate(
+    name: 'Klinik ibu dan anak',
+    services: ['Anak', 'Kandungan'],
+    rooms: ['Ruang Konsultasi', 'Ruang Tindakan'],
+    equipment: ['Doppler janin', 'Timbangan bayi'],
+  ),
+];
+
+enum _OperatingTimeField { open, close, breakStart, breakEnd }
+
 class OnboardingWizardPage extends StatefulWidget {
-  const OnboardingWizardPage({super.key, this.rejectionReason});
+  const OnboardingWizardPage({
+    super.key,
+    this.rejectionReason,
+    this.initialStep,
+  });
 
   final String? rejectionReason;
+  final int? initialStep;
 
   @override
   State<OnboardingWizardPage> createState() => _OnboardingWizardPageState();
@@ -62,6 +114,29 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
 
   bool _initializedData = false;
   bool _gettingLocation = false;
+  Timer? _autoSaveTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final controller in [
+      _clinicNameCtrl,
+      _addressCtrl,
+      _latCtrl,
+      _lngCtrl,
+      _phoneCtrl,
+      _emailCtrl,
+      _sioNumberCtrl,
+      _npwpCtrl,
+      _fasyankesCtrl,
+      _deedNumberCtrl,
+      _bpjsCodeCtrl,
+      _emrAppNameCtrl,
+      _satusehatOrgCtrl,
+    ]) {
+      controller.addListener(_scheduleAutoSave);
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -75,7 +150,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
   void _initFromClinic() {
     final clinic = context.read<ClinicController>().clinic;
     if (clinic != null) {
-      _currentStep = clinic.onboardingStep.clamp(1, 6);
+      _currentStep = (widget.initialStep ?? clinic.onboardingStep).clamp(1, 6);
       _clinicNameCtrl.text = clinic.clinicName ?? '';
       _selectedLegalType = clinic.legalEntityType ?? LegalEntityType.individual;
       _addressCtrl.text = clinic.addressFull ?? '';
@@ -103,6 +178,24 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
+    for (final controller in [
+      _clinicNameCtrl,
+      _addressCtrl,
+      _latCtrl,
+      _lngCtrl,
+      _phoneCtrl,
+      _emailCtrl,
+      _sioNumberCtrl,
+      _npwpCtrl,
+      _fasyankesCtrl,
+      _deedNumberCtrl,
+      _bpjsCodeCtrl,
+      _emrAppNameCtrl,
+      _satusehatOrgCtrl,
+    ]) {
+      controller.removeListener(_scheduleAutoSave);
+    }
     _clinicNameCtrl.dispose();
     _addressCtrl.dispose();
     _latCtrl.dispose();
@@ -192,13 +285,46 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
     }
   }
 
-  Future<bool> _saveCurrentStepData() async {
+  void _scheduleAutoSave() {
+    if (!_initializedData || !mounted || ![1, 3, 4].contains(_currentStep)) {
+      return;
+    }
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(const Duration(milliseconds: 900), () async {
+      _autoSaveTimer = null;
+      final saved = await _saveCurrentStepData(
+        validate: false,
+        saveSecret: false,
+      );
+      if (!saved && mounted) {
+        final clinicCtrl = context.read<ClinicController>();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(clinicCtrl.errorMessage ??
+                'Simpan otomatis belum berhasil. Periksa koneksi Anda.'),
+          ),
+        );
+      }
+    });
+  }
+
+  Future<bool> _saveCurrentStepData({
+    bool showFeedback = false,
+    bool validate = true,
+    bool saveSecret = true,
+  }) async {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = null;
     final clinicCtrl = context.read<ClinicController>();
     final currentClinic = clinicCtrl.clinic;
-    if (currentClinic == null) return false;
+    if (currentClinic == null) {
+      return _reportStepSave(false, showFeedback, clinicCtrl);
+    }
 
     if (_currentStep == 1) {
-      if (!(_step1FormKey.currentState?.validate() ?? false)) return false;
+      if (validate && !(_step1FormKey.currentState?.validate() ?? false)) {
+        return false;
+      }
 
       final updated = currentClinic.copyWith(
         clinicName: _clinicNameCtrl.text.trim(),
@@ -216,7 +342,8 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
         onboardingStep: _currentStep,
       );
 
-      return await clinicCtrl.updateBasicData(updated);
+      final saved = await clinicCtrl.updateBasicData(updated);
+      return _reportStepSave(saved, showFeedback, clinicCtrl);
     } else if (_currentStep == 3) {
       final updated = currentClinic.copyWith(
         bpjsRegistered: _bpjsRegistered,
@@ -224,11 +351,13 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
         onboardingStep: _currentStep,
       );
 
-      return await clinicCtrl.updateBasicData(updated);
+      final saved = await clinicCtrl.updateBasicData(updated);
+      return _reportStepSave(saved, showFeedback, clinicCtrl);
     } else if (_currentStep == 4) {
       final emr = clinicCtrl.emrSettings;
+      var saved = emr != null;
       if (emr != null) {
-        await clinicCtrl.updateEmrSettings(
+        saved = await clinicCtrl.updateEmrSettings(
           emr.copyWith(
             emrAppName: _emrAppNameCtrl.text.trim(),
             emrAppType: _selectedEmrType,
@@ -236,26 +365,66 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
           ),
         );
       }
-      if (_satusehatSecretCtrl.text.trim().isNotEmpty) {
-        await clinicCtrl.saveSatusehatSecret(_satusehatSecretCtrl.text.trim());
-        _satusehatSecretCtrl.clear();
+      if (saveSecret && _satusehatSecretCtrl.text.trim().isNotEmpty) {
+        final secretSaved = await clinicCtrl
+            .saveSatusehatSecret(_satusehatSecretCtrl.text.trim());
+        saved = saved && secretSaved;
+        if (secretSaved) _satusehatSecretCtrl.clear();
       }
-      return true;
+      return _reportStepSave(saved, showFeedback, clinicCtrl);
     } else {
       // Step 2, 5 save items dynamically on mutation
       final updated = currentClinic.copyWith(onboardingStep: _currentStep);
-      await clinicCtrl.updateBasicData(updated);
-      return true;
+      final saved = await clinicCtrl.updateBasicData(updated);
+      return _reportStepSave(saved, showFeedback, clinicCtrl);
     }
   }
 
+  bool _reportStepSave(
+    bool saved,
+    bool showFeedback,
+    ClinicController clinicCtrl,
+  ) {
+    if (showFeedback && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(saved
+              ? 'Progress tersimpan. Anda dapat melanjutkan nanti.'
+              : clinicCtrl.errorMessage ??
+                  'Progress belum tersimpan. Periksa koneksi dan coba lagi.'),
+        ),
+      );
+    }
+    return saved;
+  }
+
   Future<void> _goNext() async {
-    final saved = await _saveCurrentStepData();
+    final saved = await _saveCurrentStepData(showFeedback: true);
     if (saved && mounted) {
       if (_currentStep < 6) {
         setState(() => _currentStep++);
       }
     }
+  }
+
+  Future<void> _goToStep(int step) async {
+    if (step == _currentStep) return;
+    final saved = await _saveCurrentStepData(
+      validate: false,
+      saveSecret: false,
+    );
+    if (!mounted) return;
+    if (!saved) {
+      final clinicCtrl = context.read<ClinicController>();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(clinicCtrl.errorMessage ??
+              'Perubahan belum tersimpan. Periksa koneksi sebelum berpindah bagian.'),
+        ),
+      );
+      return;
+    }
+    setState(() => _currentStep = step);
   }
 
   void _goBack() {
@@ -279,6 +448,12 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
         backgroundColor: c.surface,
         elevation: 0,
         actions: [
+          if (hasSupportContact)
+            IconButton(
+              icon: const Icon(Icons.support_agent_outlined),
+              tooltip: 'Hubungi dukungan',
+              onPressed: () => openSupportChat(context),
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan Progress',
@@ -350,7 +525,23 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 800),
-                  child: _buildCurrentStepContent(context),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (clinicCtrl.clinic?.status == ClinicStatus.rejected)
+                        RejectedItemsPanel(
+                          onFix: _goToStep,
+                        ),
+                      if (clinicCtrl.clinic?.status == ClinicStatus.rejected &&
+                          clinicCtrl.clinic != null) ...[
+                        const SizedBox(height: 12),
+                        VerificationTimeline(clinic: clinicCtrl.clinic!),
+                        const SizedBox(height: 12),
+                      ],
+                      _missingItemsBanner(onboarding),
+                      _buildCurrentStepContent(context),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -378,10 +569,10 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                 Row(
                   children: [
                     AppButton(
-                      'Simpan Draf',
+                      'Simpan & lanjut besok',
                       kind: BtnKind.secondary,
                       loading: clinicCtrl.loading,
-                      onPressed: () => _saveCurrentStepData(),
+                      onPressed: () => _saveCurrentStepData(showFeedback: true),
                     ),
                     const SizedBox(width: 12),
                     if (_currentStep < 6)
@@ -402,12 +593,39 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
     );
   }
 
+  Widget _missingItemsBanner(OnboardingStatusModel status) {
+    final missing = [
+      ...status.basicData.missing,
+      ...status.servicesFacilities.missing,
+      ...status.adminLegal.missing,
+      ...status.emrSystem.missing,
+      ...status.healthWorkers.missing,
+      ...status.publicMedia.missing,
+    ];
+    if (missing.isEmpty || status.readyToSubmit) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        child: ListTile(
+          leading: const Icon(Icons.checklist_outlined),
+          title: Text('Tinggal ${missing.length} hal lagi'),
+          subtitle: Text(
+              'Ketuk untuk melengkapi: ${ErrorMapper.technicalKeyToIndonesian(missing.first)}'),
+          trailing: const Icon(Icons.arrow_forward),
+          onTap: () => _goToStep(ErrorMapper.keyToStepIndex(missing.first)),
+        ),
+      ),
+    );
+  }
+
   Widget _stepIndicator(int stepIndex, String title, bool isComplete) {
     final c = context.c;
     final bool isCurrent = _currentStep == stepIndex;
 
     return InkWell(
-      onTap: () => setState(() => _currentStep = stepIndex),
+      onTap: () => _goToStep(stepIndex),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -511,7 +729,10 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
               items: LegalEntityType.values
                   .map((e) => DropdownMenuItem(value: e, child: Text(e.label)))
                   .toList(),
-              onChanged: (v) => setState(() => _selectedLegalType = v),
+              onChanged: (v) {
+                setState(() => _selectedLegalType = v);
+                _scheduleAutoSave();
+              },
               decoration: const InputDecoration(border: OutlineInputBorder()),
             ),
             const SizedBox(height: 16),
@@ -557,6 +778,11 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            Text('Atau ketuk peta untuk memilih titik klinik.',
+                style: context.sSmall),
+            const SizedBox(height: 8),
+            _buildLocationMap(),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -635,6 +861,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                           );
                           if (picked != null) {
                             setState(() => _sioExpiryDate = picked);
+                            _scheduleAutoSave();
                           }
                         },
                         child: Container(
@@ -645,10 +872,15 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(AppFormatters.formatDate(_sioExpiryDate,
-                                  fallback: 'Pilih Tanggal Masa Berlaku')),
+                              Expanded(
+                                child: Text(
+                                  AppFormatters.formatDate(_sioExpiryDate,
+                                      fallback: 'Pilih Tanggal Masa Berlaku'),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               const Icon(Icons.calendar_today, size: 18),
                             ],
                           ),
@@ -659,6 +891,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                 ),
               ],
             ),
+            const FieldHelp(contentId: 'sio'),
             const SizedBox(height: 16),
 
             DocumentUploadTile(
@@ -695,6 +928,13 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                 ),
               ],
             ),
+            const Wrap(
+              spacing: 8,
+              children: [
+                FieldHelp(contentId: 'clinic_npwp'),
+                FieldHelp(contentId: 'fasyankes_code'),
+              ],
+            ),
             const SizedBox(height: 16),
 
             if (_selectedLegalType == LegalEntityType.pt ||
@@ -706,6 +946,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                 validator: (v) =>
                     AppValidators.validateRequired(v, 'Nomor akta pendirian'),
               ),
+              const FieldHelp(contentId: 'deed'),
               const SizedBox(height: 16),
               DocumentUploadTile(
                 title: 'Unggah Akta Pendirian (PT/Yayasan)',
@@ -760,6 +1001,86 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
     );
   }
 
+  Widget _buildLocationMap() {
+    final latitude = double.tryParse(_latCtrl.text);
+    final longitude = double.tryParse(_lngCtrl.text);
+    final hasLocation = latitude != null &&
+        longitude != null &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180;
+    final center =
+        hasLocation ? LatLng(latitude, longitude) : const LatLng(-2.5, 118);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: FlutterMap(
+          options: MapOptions(
+            initialCenter: center,
+            initialZoom: hasLocation ? 13 : 4,
+            onTap: (_, point) {
+              setState(() {
+                _latCtrl.text = point.latitude.toStringAsFixed(6);
+                _lngCtrl.text = point.longitude.toStringAsFixed(6);
+              });
+            },
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.prometheon.clinic',
+            ),
+            if (hasLocation)
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: center,
+                    width: 40,
+                    height: 48,
+                    child: Builder(
+                      builder: (mapContext) => GestureDetector(
+                        onPanUpdate: (details) {
+                          final camera = MapCamera.of(mapContext);
+                          final markerOffset =
+                              camera.latLngToScreenOffset(center);
+                          final point = camera.screenOffsetToLatLng(
+                            markerOffset + details.delta,
+                          );
+                          setState(() {
+                            _latCtrl.text = point.latitude.toStringAsFixed(6);
+                            _lngCtrl.text = point.longitude.toStringAsFixed(6);
+                          });
+                        },
+                        child: const Icon(
+                          Icons.location_pin,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            RichAttributionWidget(
+              attributions: [
+                TextSourceAttribution(
+                  'OpenStreetMap contributors',
+                  onTap: () => launchUrl(
+                    Uri.parse('https://www.openstreetmap.org/copyright'),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // --- STEP 2: LAYANAN & FASILITAS ---
   Widget _buildStep2LayananFasilitas(BuildContext context) {
     final clinicCtrl = context.watch<ClinicController>();
@@ -796,6 +1117,18 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                   style: context.sSmall),
               const SizedBox(height: 24),
 
+              AppButton(
+                'Mulai dari template',
+                icon: Icons.auto_awesome_outlined,
+                kind: BtnKind.secondary,
+                onPressed: () => _showClinicTemplateDialog(
+                  context,
+                  clinicId,
+                  clinicCtrl,
+                  activeCats,
+                ),
+              ),
+              const SizedBox(height: 20),
               Text('1. Jenis Layanan / Spesialisasi Spesifik',
                   style: context.sBody.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
@@ -900,14 +1233,17 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
               const SizedBox(height: 24),
 
               // Medicines Catalog Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                       '4. Obat-obatan Tersedia (Opsional, ${clinicCtrl.medicines.length})',
                       style:
                           context.sBody.copyWith(fontWeight: FontWeight.bold)),
-                  Row(
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       AppButton(
                         'Impor CSV',
@@ -915,7 +1251,6 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                         kind: BtnKind.secondary,
                         onPressed: () => _importCsvDialog(context),
                       ),
-                      const SizedBox(width: 8),
                       AppButton(
                         'Tambah Obat',
                         icon: Icons.add,
@@ -968,47 +1303,489 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
               ),
               const SizedBox(height: 12),
               Column(
-                children: clinicCtrl.operatingHours.map((hours) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 80,
-                          child: Text(hours.dayName,
-                              style: context.sBody
-                                  .copyWith(fontWeight: FontWeight.bold)),
-                        ),
-                        Switch(
-                          value: hours.isOpen,
-                          onChanged: (val) {
-                            final updatedList =
-                                clinicCtrl.operatingHours.map((h) {
-                              if (h.id == hours.id) {
-                                return h.copyWith(isOpen: val);
-                              }
-                              return h;
-                            }).toList();
-                            clinicCtrl.updateOperatingHours(updatedList);
-                          },
-                        ),
-                        Text(hours.isOpen ? 'Buka' : 'Tutup',
-                            style: context.sSmall),
-                        if (hours.isOpen) ...[
-                          const SizedBox(width: 16),
-                          Text(
-                              '${hours.openTime ?? '08:00'} - ${hours.closeTime ?? '17:00'}',
-                              style: context.sBody),
-                        ],
-                      ],
-                    ),
-                  );
-                }).toList(),
+                children: clinicCtrl.operatingHours
+                    .map((hours) => _buildOperatingHoursEditor(
+                          context,
+                          clinicCtrl,
+                          hours,
+                        ))
+                    .toList(),
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildOperatingHoursEditor(
+    BuildContext context,
+    ClinicController clinicCtrl,
+    ClinicOperatingHoursModel hours,
+  ) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(hours.dayName,
+                      style:
+                          context.sBody.copyWith(fontWeight: FontWeight.bold)),
+                ),
+                Text(hours.isOpen ? 'Buka' : 'Tutup', style: context.sSmall),
+                Switch(
+                  value: hours.isOpen,
+                  onChanged: (isOpen) => _setOperatingDayOpen(
+                    context,
+                    clinicCtrl,
+                    hours,
+                    isOpen,
+                  ),
+                ),
+              ],
+            ),
+            if (hours.isOpen) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _operatingTimeButton(
+                    context,
+                    clinicCtrl,
+                    hours,
+                    _OperatingTimeField.open,
+                    'Jam buka',
+                    hours.openTime,
+                  ),
+                  _operatingTimeButton(
+                    context,
+                    clinicCtrl,
+                    hours,
+                    _OperatingTimeField.close,
+                    'Jam tutup',
+                    hours.closeTime,
+                  ),
+                  _operatingTimeButton(
+                    context,
+                    clinicCtrl,
+                    hours,
+                    _OperatingTimeField.breakStart,
+                    'Istirahat mulai',
+                    hours.breakStart,
+                  ),
+                  _operatingTimeButton(
+                    context,
+                    clinicCtrl,
+                    hours,
+                    _OperatingTimeField.breakEnd,
+                    'Istirahat selesai',
+                    hours.breakEnd,
+                  ),
+                  if (hours.breakStart != null)
+                    TextButton(
+                      onPressed: () => _clearOperatingBreak(
+                        context,
+                        clinicCtrl,
+                        hours,
+                        clearStart: true,
+                      ),
+                      child: const Text('Hapus jam mulai istirahat'),
+                    ),
+                  if (hours.breakEnd != null)
+                    TextButton(
+                      onPressed: () => _clearOperatingBreak(
+                        context,
+                        clinicCtrl,
+                        hours,
+                        clearEnd: true,
+                      ),
+                      child: const Text('Hapus jam selesai istirahat'),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _operatingTimeButton(
+    BuildContext context,
+    ClinicController clinicCtrl,
+    ClinicOperatingHoursModel hours,
+    _OperatingTimeField field,
+    String label,
+    String? value,
+  ) {
+    return OutlinedButton.icon(
+      icon: const Icon(Icons.schedule, size: 18),
+      label: Text(value == null ? label : '$label: ${_displayTime(value)}'),
+      onPressed: () => _pickOperatingTime(
+        context,
+        clinicCtrl,
+        hours,
+        field,
+        value,
+      ),
+    );
+  }
+
+  Future<void> _setOperatingDayOpen(
+    BuildContext context,
+    ClinicController clinicCtrl,
+    ClinicOperatingHoursModel hours,
+    bool isOpen,
+  ) async {
+    final updatedHour = hours.copyWith(
+      isOpen: isOpen,
+      openTime: isOpen ? hours.openTime ?? '08:00:00' : null,
+      closeTime: isOpen ? hours.closeTime ?? '17:00:00' : null,
+    );
+    await _saveOperatingHour(context, clinicCtrl, updatedHour);
+  }
+
+  Future<void> _pickOperatingTime(
+    BuildContext context,
+    ClinicController clinicCtrl,
+    ClinicOperatingHoursModel hours,
+    _OperatingTimeField field,
+    String? currentValue,
+  ) async {
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: _parseTime(currentValue, field),
+      helpText: switch (field) {
+        _OperatingTimeField.open => 'Pilih jam buka',
+        _OperatingTimeField.close => 'Pilih jam tutup',
+        _OperatingTimeField.breakStart => 'Pilih awal jam istirahat',
+        _OperatingTimeField.breakEnd => 'Pilih akhir jam istirahat',
+      },
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      ),
+    );
+    if (selected == null || !context.mounted) return;
+
+    final time = _databaseTime(selected);
+    final updatedHour = switch (field) {
+      _OperatingTimeField.open => hours.copyWith(openTime: time),
+      _OperatingTimeField.close => hours.copyWith(closeTime: time),
+      _OperatingTimeField.breakStart => hours.copyWith(breakStart: time),
+      _OperatingTimeField.breakEnd => hours.copyWith(breakEnd: time),
+    };
+
+    if (updatedHour.isOpen &&
+        (updatedHour.openTime == null ||
+            updatedHour.closeTime == null ||
+            !_isAfter(updatedHour.closeTime!, updatedHour.openTime!))) {
+      _showOperatingHoursError(
+        context,
+        'Jam tutup harus lebih akhir daripada jam buka.',
+      );
+      return;
+    }
+    if (updatedHour.breakStart != null &&
+        updatedHour.breakEnd != null &&
+        !_isAfter(updatedHour.breakEnd!, updatedHour.breakStart!)) {
+      _showOperatingHoursError(
+        context,
+        'Jam selesai istirahat harus lebih akhir daripada jam mulainya.',
+      );
+      return;
+    }
+
+    await _saveOperatingHour(context, clinicCtrl, updatedHour);
+  }
+
+  Future<void> _clearOperatingBreak(
+    BuildContext context,
+    ClinicController clinicCtrl,
+    ClinicOperatingHoursModel hours, {
+    bool clearStart = false,
+    bool clearEnd = false,
+  }) async {
+    await _saveOperatingHour(
+      context,
+      clinicCtrl,
+      hours.copyWith(
+        clearBreakStart: clearStart,
+        clearBreakEnd: clearEnd,
+      ),
+    );
+  }
+
+  Future<void> _saveOperatingHour(
+    BuildContext context,
+    ClinicController clinicCtrl,
+    ClinicOperatingHoursModel updatedHour,
+  ) async {
+    if (updatedHour.isOpen &&
+        (updatedHour.openTime == null ||
+            updatedHour.closeTime == null ||
+            !_isAfter(updatedHour.closeTime!, updatedHour.openTime!))) {
+      _showOperatingHoursError(
+        context,
+        'Jam buka dan jam tutup wajib diisi; jam tutup harus lebih akhir.',
+      );
+      return;
+    }
+    if (updatedHour.breakStart != null &&
+        updatedHour.breakEnd != null &&
+        !_isAfter(updatedHour.breakEnd!, updatedHour.breakStart!)) {
+      _showOperatingHoursError(
+        context,
+        'Jam selesai istirahat harus lebih akhir daripada jam mulainya.',
+      );
+      return;
+    }
+
+    final updatedHours = clinicCtrl.operatingHours
+        .map((item) => item.id == updatedHour.id ? updatedHour : item)
+        .toList();
+    final success = await clinicCtrl.updateOperatingHours(updatedHours);
+    if (!success && context.mounted) {
+      _showOperatingHoursError(
+        context,
+        clinicCtrl.errorMessage ?? 'Jam operasional belum berhasil disimpan.',
+      );
+    }
+  }
+
+  void _showOperatingHoursError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  TimeOfDay _parseTime(String? value, _OperatingTimeField field) {
+    final fallback = switch (field) {
+      _OperatingTimeField.open => const TimeOfDay(hour: 8, minute: 0),
+      _OperatingTimeField.close => const TimeOfDay(hour: 17, minute: 0),
+      _OperatingTimeField.breakStart => const TimeOfDay(hour: 12, minute: 0),
+      _OperatingTimeField.breakEnd => const TimeOfDay(hour: 13, minute: 0),
+    };
+    if (value == null) return fallback;
+    final parts = value.split(':');
+    final hour = int.tryParse(parts[0]);
+    final minute = parts.length > 1 ? int.tryParse(parts[1]) : null;
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
+      return fallback;
+    }
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  String _databaseTime(TimeOfDay value) =>
+      '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}:00';
+
+  String _displayTime(String value) {
+    final parts = value.split(':');
+    if (parts.length < 2) return value;
+    return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
+  }
+
+  bool _isAfter(String later, String earlier) =>
+      _minutesSinceMidnight(later) > _minutesSinceMidnight(earlier);
+
+  int _minutesSinceMidnight(String value) {
+    final parts = value.split(':');
+    final hour = int.tryParse(parts[0]) ?? 0;
+    final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+    return hour * 60 + minute;
+  }
+
+  void _showClinicTemplateDialog(
+    BuildContext context,
+    String clinicId,
+    ClinicController clinicCtrl,
+    List<String> currentServices,
+  ) {
+    var selectedTemplate = _clinicTemplates.first;
+    var selectedServices = Set<String>.from(selectedTemplate.services);
+    var selectedRooms = Set<String>.from(selectedTemplate.rooms);
+    var selectedEquipment = Set<String>.from(selectedTemplate.equipment);
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Pilih template klinik'),
+          content: SizedBox(
+            width: 460,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                      'Template hanya menambahkan data yang belum ada. Tinjau dan sesuaikan pilihan sebelum menerapkan.'),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<_ClinicTemplate>(
+                    initialValue: selectedTemplate,
+                    items: _clinicTemplates
+                        .map((template) => DropdownMenuItem(
+                              value: template,
+                              child: Text(template.name),
+                            ))
+                        .toList(),
+                    onChanged: (template) {
+                      if (template == null) return;
+                      setDialogState(() {
+                        selectedTemplate = template;
+                        selectedServices = Set<String>.from(template.services);
+                        selectedRooms = Set<String>.from(template.rooms);
+                        selectedEquipment =
+                            Set<String>.from(template.equipment);
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Jenis klinik',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Layanan', style: context.sStrong),
+                  for (final service in selectedTemplate.services)
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(service),
+                      value: selectedServices.contains(service),
+                      onChanged: (value) => setDialogState(() {
+                        if (value == true) {
+                          selectedServices.add(service);
+                        } else {
+                          selectedServices.remove(service);
+                        }
+                      }),
+                    ),
+                  Text('Ruangan', style: context.sStrong),
+                  for (final room in selectedTemplate.rooms)
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(room),
+                      value: selectedRooms.contains(room),
+                      onChanged: (value) => setDialogState(() {
+                        if (value == true) {
+                          selectedRooms.add(room);
+                        } else {
+                          selectedRooms.remove(room);
+                        }
+                      }),
+                    ),
+                  Text('Peralatan', style: context.sStrong),
+                  for (final equipment in selectedTemplate.equipment)
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(equipment),
+                      value: selectedEquipment.contains(equipment),
+                      onChanged: (value) => setDialogState(() {
+                        if (value == true) {
+                          selectedEquipment.add(equipment);
+                        } else {
+                          selectedEquipment.remove(equipment);
+                        }
+                      }),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final services = {...currentServices, ...selectedServices};
+                var saved = await clinicCtrl.toggleServiceCategories(
+                  services.toList(),
+                );
+                if (!saved) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(clinicCtrl.errorMessage ??
+                            'Layanan template belum berhasil disimpan.'),
+                      ),
+                    );
+                  }
+                  return;
+                }
+
+                final existingRooms = clinicCtrl.facilities
+                    .map((facility) => facility.name.trim().toLowerCase())
+                    .toSet();
+                for (final room in selectedRooms) {
+                  if (existingRooms.contains(room.trim().toLowerCase())) {
+                    continue;
+                  }
+                  final kind = room == 'Ruang Tindakan'
+                      ? FacilityKind.treatment_room
+                      : FacilityKind.consultation_room;
+                  saved = await clinicCtrl.saveFacility(
+                    ClinicFacilityModel(
+                      id: '',
+                      clinicId: clinicId,
+                      name: room,
+                      kind: kind,
+                      capacity: 1,
+                    ),
+                  );
+                  if (!saved) break;
+                  existingRooms.add(room.trim().toLowerCase());
+                }
+
+                final existingEquipment = clinicCtrl.equipment
+                    .map((item) => item.name.trim().toLowerCase())
+                    .toSet();
+                if (saved) {
+                  for (final equipment in selectedEquipment) {
+                    if (existingEquipment
+                        .contains(equipment.trim().toLowerCase())) {
+                      continue;
+                    }
+                    saved = await clinicCtrl.saveEquipment(
+                      ClinicEquipmentModel(
+                        id: '',
+                        clinicId: clinicId,
+                        name: equipment,
+                        category: EquipmentCategory.medical,
+                      ),
+                    );
+                    if (!saved) break;
+                    existingEquipment.add(equipment.trim().toLowerCase());
+                  }
+                }
+
+                if (!dialogContext.mounted || !context.mounted) return;
+                Navigator.of(dialogContext).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(saved
+                        ? 'Template diterapkan. Periksa kembali sebelum melanjutkan.'
+                        : clinicCtrl.errorMessage ??
+                            'Sebagian template belum berhasil disimpan.'),
+                  ),
+                );
+              },
+              child: const Text('Terapkan template'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1054,6 +1831,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
             isRequired: true,
             onChanged: () => clinicCtrl.refreshClinicDocuments(),
           ),
+          const FieldHelp(contentId: 'registration_request'),
           const SizedBox(height: 16),
 
           DocumentUploadTile(
@@ -1066,6 +1844,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
             isRequired: true,
             onChanged: () => clinicCtrl.refreshClinicDocuments(),
           ),
+          const FieldHelp(contentId: 'quality_commitment'),
           const SizedBox(height: 24),
 
           // Org Structure Editor
@@ -1089,17 +1868,41 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                 style: context.sSmall)
           else
             Column(
-              children: clinicCtrl.orgStructure
-                  .map((org) => ListTile(
-                        leading: const Icon(Icons.account_tree_outlined),
-                        title: Text('${org.position}: ${org.personName}'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () =>
-                              clinicCtrl.deleteOrgStructureNode(org.id),
+              children: clinicCtrl.orgStructure.map((org) {
+                final linkedWorkers = clinicCtrl.healthWorkers
+                    .where((worker) => worker.id == org.healthWorkerId)
+                    .toList();
+                final linkedWorker =
+                    linkedWorkers.isEmpty ? null : linkedWorkers.first;
+                return ListTile(
+                  leading: const Icon(Icons.account_tree_outlined),
+                  title: Text('${org.position}: ${org.personName}'),
+                  subtitle: Text(
+                    'Urutan ${org.sortOrder}'
+                    '${linkedWorker == null ? '' : ' • Tenaga kesehatan: ${linkedWorker.fullName}'}',
+                  ),
+                  trailing: Wrap(
+                    spacing: 4,
+                    children: [
+                      IconButton(
+                        tooltip: 'Ubah jabatan',
+                        icon: const Icon(Icons.edit_outlined),
+                        onPressed: () => _showOrgStructureDialog(
+                          context,
+                          clinicId,
+                          org,
                         ),
-                      ))
-                  .toList(),
+                      ),
+                      IconButton(
+                        tooltip: 'Hapus jabatan',
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () =>
+                            clinicCtrl.deleteOrgStructureNode(org.id),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
           const SizedBox(height: 24),
 
@@ -1108,7 +1911,10 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
             children: [
               Switch(
                 value: _bpjsRegistered,
-                onChanged: (v) => setState(() => _bpjsRegistered = v),
+                onChanged: (v) {
+                  setState(() => _bpjsRegistered = v);
+                  _scheduleAutoSave();
+                },
               ),
               const SizedBox(width: 8),
               Text('Terdaftar & Bekerjasama dengan BPJS Kesehatan',
@@ -1187,8 +1993,10 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
             items: EmrAppType.values
                 .map((e) => DropdownMenuItem(value: e, child: Text(e.label)))
                 .toList(),
-            onChanged: (v) =>
-                setState(() => _selectedEmrType = v ?? EmrAppType.internal),
+            onChanged: (v) {
+              setState(() => _selectedEmrType = v ?? EmrAppType.internal);
+              _scheduleAutoSave();
+            },
             decoration: const InputDecoration(border: OutlineInputBorder()),
           ),
           const SizedBox(height: 16),
@@ -1198,6 +2006,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
             hint: 'Kode Organization ID SATUSEHAT',
             controller: _satusehatOrgCtrl,
           ),
+          const FieldHelp(contentId: 'satusehat_org'),
           const SizedBox(height: 16),
 
           // SATUSEHAT Write-only API Key Input
@@ -1237,6 +2046,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
               ),
             ],
           ),
+          const FieldHelp(contentId: 'satusehat_api'),
           const SizedBox(height: 24),
 
           DocumentUploadTile(
@@ -1248,6 +2058,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
             isRequired: true,
             onChanged: () => clinicCtrl.refreshClinicDocuments(),
           ),
+          const FieldHelp(contentId: 'service_sop'),
           const SizedBox(height: 16),
 
           DocumentUploadTile(
@@ -1259,6 +2070,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
             isRequired: true,
             onChanged: () => clinicCtrl.refreshClinicDocuments(),
           ),
+          const FieldHelp(contentId: 'clinic_photo'),
           const SizedBox(height: 16),
 
           DocumentUploadTile(
@@ -1513,7 +2325,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
                 ],
               ),
               TextButton(
-                onPressed: () => setState(() => _currentStep = stepIdx),
+                onPressed: () => _goToStep(stepIdx),
                 child: const Text('Ubah'),
               ),
             ],
@@ -1529,10 +2341,7 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
               children: missing.map((itemKey) {
                 final label = ErrorMapper.technicalKeyToIndonesian(itemKey);
                 return InkWell(
-                  onTap: () {
-                    final targetStep = ErrorMapper.keyToStepIndex(itemKey);
-                    setState(() => _currentStep = targetStep);
-                  },
+                  onTap: () => _goToStep(ErrorMapper.keyToStepIndex(itemKey)),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Text('• $label',
@@ -1551,157 +2360,417 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
   }
 
   // --- DIALOG HELPERS ---
-  void _showFacilityDialog(BuildContext context, String clinicId) {
+  Future<void> _showFacilityDialog(
+      BuildContext context, String clinicId) async {
     final nameCtrl = TextEditingController();
+    final capacityCtrl = TextEditingController(text: '1');
+    final notesCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
     FacilityKind selectedKind = FacilityKind.consultation_room;
-    int capacity = 1;
+    FacilityUnitStatus selectedStatus = FacilityUnitStatus.available;
+    var saving = false;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Tambah Fasilitas / Ruangan'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppFormField(
-                label: 'Nama Ruangan',
-                hint: 'Ruang Periksa 1',
-                controller: nameCtrl),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<FacilityKind>(
-              initialValue: selectedKind,
-              items: FacilityKind.values
-                  .map((k) => DropdownMenuItem(value: k, child: Text(k.label)))
-                  .toList(),
-              onChanged: (v) =>
-                  selectedKind = v ?? FacilityKind.consultation_room,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Tambah fasilitas atau ruangan'),
+          content: SizedBox(
+            width: 460,
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppFormField(
+                      label: 'Nama fasilitas atau ruangan',
+                      hint: 'Ruang Periksa 1',
+                      controller: nameCtrl,
+                      validator: (value) => AppValidators.validateRequired(
+                          value, 'Nama fasilitas'),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<FacilityKind>(
+                      initialValue: selectedKind,
+                      items: FacilityKind.values
+                          .map((kind) => DropdownMenuItem(
+                              value: kind, child: Text(kind.label)))
+                          .toList(),
+                      onChanged: (value) => setDialogState(() {
+                        selectedKind = value ?? FacilityKind.consultation_room;
+                      }),
+                      decoration: const InputDecoration(
+                        labelText: 'Jenis fasilitas',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    AppFormField(
+                      label: 'Kapasitas (orang)',
+                      hint: '1',
+                      controller: capacityCtrl,
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) return null;
+                        return AppValidators.validateNonNegativeInt(
+                            value, 'Kapasitas');
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<FacilityUnitStatus>(
+                      initialValue: selectedStatus,
+                      items: FacilityUnitStatus.values
+                          .map((status) => DropdownMenuItem(
+                              value: status, child: Text(status.label)))
+                          .toList(),
+                      onChanged: (value) => setDialogState(() {
+                        selectedStatus = value ?? FacilityUnitStatus.available;
+                      }),
+                      decoration: const InputDecoration(
+                        labelText: 'Status fasilitas',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    AppFormField(
+                      label: 'Catatan prasarana (opsional)',
+                      hint: 'Contoh: akses kursi roda, dekat ruang tunggu',
+                      controller: notesCtrl,
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            AppButton(
+              'Batal',
+              kind: BtnKind.secondary,
+              onPressed:
+                  saving ? null : () => Navigator.of(dialogContext).pop(),
+            ),
+            AppButton(
+              'Simpan',
+              icon: Icons.save_outlined,
+              kind: BtnKind.primary,
+              loading: saving,
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (!(formKey.currentState?.validate() ?? false)) return;
+                      setDialogState(() => saving = true);
+                      final controller = context.read<ClinicController>();
+                      final success = await controller.saveFacility(
+                        ClinicFacilityModel(
+                          id: '',
+                          clinicId: clinicId,
+                          name: nameCtrl.text.trim(),
+                          kind: selectedKind,
+                          capacity: capacityCtrl.text.trim().isEmpty
+                              ? null
+                              : int.parse(capacityCtrl.text.trim()),
+                          status: selectedStatus,
+                          notes: notesCtrl.text.trim().isEmpty
+                              ? null
+                              : notesCtrl.text.trim(),
+                        ),
+                      );
+                      if (!dialogContext.mounted) return;
+                      if (success) {
+                        Navigator.of(dialogContext).pop();
+                      } else {
+                        setDialogState(() => saving = false);
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(
+                            content: Text(controller.errorMessage ??
+                                'Fasilitas belum berhasil disimpan.'),
+                          ),
+                        );
+                      }
+                    },
             ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isNotEmpty) {
-                context.read<ClinicController>().saveFacility(
-                      ClinicFacilityModel(
-                        id: '',
-                        clinicId: clinicId,
-                        name: nameCtrl.text.trim(),
-                        kind: selectedKind,
-                        capacity: capacity,
-                      ),
-                    );
-                Navigator.of(ctx).pop();
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
       ),
     );
   }
 
-  void _showEquipmentDialog(BuildContext context, String clinicId) {
+  Future<void> _showEquipmentDialog(
+      BuildContext context, String clinicId) async {
     final nameCtrl = TextEditingController();
+    final quantityCtrl = TextEditingController(text: '1');
+    final notesCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
     EquipmentCategory category = EquipmentCategory.medical;
+    var selectedCondition = '';
+    var saving = false;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Tambah Peralatan'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppFormField(
-                label: 'Nama Alat',
-                hint: 'Stetoskop / Timbangan Digital',
-                controller: nameCtrl),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<EquipmentCategory>(
-              initialValue: category,
-              items: EquipmentCategory.values
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c.label)))
-                  .toList(),
-              onChanged: (v) => category = v ?? EquipmentCategory.medical,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Tambah peralatan'),
+          content: SizedBox(
+            width: 460,
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppFormField(
+                      label: 'Nama alat',
+                      hint: 'Stetoskop atau timbangan digital',
+                      controller: nameCtrl,
+                      validator: (value) =>
+                          AppValidators.validateRequired(value, 'Nama alat'),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<EquipmentCategory>(
+                      initialValue: category,
+                      items: EquipmentCategory.values
+                          .map((item) => DropdownMenuItem(
+                              value: item, child: Text(item.label)))
+                          .toList(),
+                      onChanged: (value) => setDialogState(() {
+                        category = value ?? EquipmentCategory.medical;
+                      }),
+                      decoration: const InputDecoration(
+                        labelText: 'Kategori peralatan',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    AppFormField(
+                      label: 'Jumlah',
+                      hint: '1',
+                      controller: quantityCtrl,
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        final number = int.tryParse(value?.trim() ?? '');
+                        if (number == null || number < 1) {
+                          return 'Jumlah harus berupa bilangan bulat minimal 1.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedCondition,
+                      items: const [
+                        DropdownMenuItem(
+                          value: '',
+                          child: Text('Pilih kondisi (opsional)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Baik',
+                          child: Text('Baik'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Perlu Kalibrasi',
+                          child: Text('Perlu Kalibrasi'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Rusak Ringan',
+                          child: Text('Rusak Ringan'),
+                        ),
+                      ],
+                      onChanged: (value) =>
+                          setDialogState(() => selectedCondition = value ?? ''),
+                      decoration: const InputDecoration(
+                        labelText: 'Kondisi (opsional)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    AppFormField(
+                      label: 'Catatan spesifikasi atau merek (opsional)',
+                      hint: 'Contoh: merek, tipe, atau nomor inventaris',
+                      controller: notesCtrl,
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            AppButton(
+              'Batal',
+              kind: BtnKind.secondary,
+              onPressed:
+                  saving ? null : () => Navigator.of(dialogContext).pop(),
+            ),
+            AppButton(
+              'Simpan',
+              icon: Icons.save_outlined,
+              kind: BtnKind.primary,
+              loading: saving,
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (!(formKey.currentState?.validate() ?? false)) return;
+                      setDialogState(() => saving = true);
+                      final controller = context.read<ClinicController>();
+                      final success = await controller.saveEquipment(
+                        ClinicEquipmentModel(
+                          id: '',
+                          clinicId: clinicId,
+                          name: nameCtrl.text.trim(),
+                          category: category,
+                          quantity: int.parse(quantityCtrl.text.trim()),
+                          condition: selectedCondition.isEmpty
+                              ? null
+                              : selectedCondition,
+                          notes: notesCtrl.text.trim().isEmpty
+                              ? null
+                              : notesCtrl.text.trim(),
+                        ),
+                      );
+                      if (!dialogContext.mounted) return;
+                      if (success) {
+                        Navigator.of(dialogContext).pop();
+                      } else {
+                        setDialogState(() => saving = false);
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(
+                            content: Text(controller.errorMessage ??
+                                'Peralatan belum berhasil disimpan.'),
+                          ),
+                        );
+                      }
+                    },
             ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isNotEmpty) {
-                context.read<ClinicController>().saveEquipment(
-                      ClinicEquipmentModel(
-                        id: '',
-                        clinicId: clinicId,
-                        name: nameCtrl.text.trim(),
-                        category: category,
-                      ),
-                    );
-                Navigator.of(ctx).pop();
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
       ),
     );
   }
 
-  void _showMedicineDialog(BuildContext context, String clinicId) {
+  Future<void> _showMedicineDialog(
+      BuildContext context, String clinicId) async {
     final nameCtrl = TextEditingController();
-    final formCtrl = TextEditingController();
     final strengthCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var selectedDosageForm = '';
+    var saving = false;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Tambah Obat'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppFormField(
-                label: 'Nama Obat', hint: 'Paracetamol', controller: nameCtrl),
-            const SizedBox(height: 12),
-            AppFormField(
-                label: 'Bentuk Sediaan',
-                hint: 'Tablet / Sirup',
-                controller: formCtrl),
-            const SizedBox(height: 12),
-            AppFormField(
-                label: 'Kekuatan Dosis',
-                hint: '500 mg',
-                controller: strengthCtrl),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Tambah obat'),
+          content: SizedBox(
+            width: 460,
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppFormField(
+                      label: 'Nama obat',
+                      hint: 'Parasetamol',
+                      controller: nameCtrl,
+                      validator: (value) =>
+                          AppValidators.validateRequired(value, 'Nama obat'),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedDosageForm,
+                      items: const [
+                        DropdownMenuItem(
+                          value: '',
+                          child: Text('Pilih sediaan (opsional)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Tablet',
+                          child: Text('Tablet'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Sirup',
+                          child: Text('Sirup'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Injeksi',
+                          child: Text('Injeksi'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Kaplet',
+                          child: Text('Kaplet'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Salep',
+                          child: Text('Salep'),
+                        ),
+                      ],
+                      onChanged: (value) => setDialogState(
+                          () => selectedDosageForm = value ?? ''),
+                      decoration: const InputDecoration(
+                        labelText: 'Bentuk sediaan',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    AppFormField(
+                      label: 'Kekuatan dosis',
+                      hint: '500 mg atau 10 mg/5 ml',
+                      controller: strengthCtrl,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            AppButton(
+              'Batal',
+              kind: BtnKind.secondary,
+              onPressed:
+                  saving ? null : () => Navigator.of(dialogContext).pop(),
+            ),
+            AppButton(
+              'Simpan',
+              icon: Icons.save_outlined,
+              kind: BtnKind.primary,
+              loading: saving,
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (!(formKey.currentState?.validate() ?? false)) return;
+                      setDialogState(() => saving = true);
+                      final controller = context.read<ClinicController>();
+                      final success = await controller.saveMedicine(
+                        ClinicMedicineModel(
+                          id: '',
+                          clinicId: clinicId,
+                          name: nameCtrl.text.trim(),
+                          dosageForm: selectedDosageForm.isEmpty
+                              ? null
+                              : selectedDosageForm,
+                          strength: strengthCtrl.text.trim().isEmpty
+                              ? null
+                              : strengthCtrl.text.trim(),
+                        ),
+                      );
+                      if (!dialogContext.mounted) return;
+                      if (success) {
+                        Navigator.of(dialogContext).pop();
+                      } else {
+                        setDialogState(() => saving = false);
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(
+                            content: Text(controller.errorMessage ??
+                                'Obat belum berhasil disimpan.'),
+                          ),
+                        );
+                      }
+                    },
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isNotEmpty) {
-                context.read<ClinicController>().saveMedicine(
-                      ClinicMedicineModel(
-                        id: '',
-                        clinicId: clinicId,
-                        name: nameCtrl.text.trim(),
-                        dosageForm: formCtrl.text.trim(),
-                        strength: strengthCtrl.text.trim(),
-                      ),
-                    );
-                Navigator.of(ctx).pop();
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
       ),
     );
   }
@@ -1748,50 +2817,146 @@ class _OnboardingWizardPageState extends State<OnboardingWizardPage> {
     );
   }
 
-  void _showOrgStructureDialog(BuildContext context, String clinicId) {
-    final personCtrl = TextEditingController();
-    final positionCtrl = TextEditingController();
+  Future<void> _showOrgStructureDialog(
+    BuildContext context,
+    String clinicId, [
+    ClinicOrgStructureModel? initialNode,
+  ]) async {
+    final controller = context.read<ClinicController>();
+    final personCtrl =
+        TextEditingController(text: initialNode?.personName ?? '');
+    final positionCtrl =
+        TextEditingController(text: initialNode?.position ?? '');
+    final sortOrderCtrl =
+        TextEditingController(text: '${initialNode?.sortOrder ?? 0}');
+    final formKey = GlobalKey<FormState>();
+    var selectedHealthWorkerId = initialNode?.healthWorkerId ?? '';
+    var saving = false;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Tambah Jabatan Organisasi'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppFormField(
-                label: 'Nama Pejabat',
-                hint: 'dr. Budi Santoso',
-                controller: personCtrl),
-            const SizedBox(height: 12),
-            AppFormField(
-                label: 'Jabatan / Posisi',
-                hint: 'Kepala Klinik / Kepala Tata Usaha',
-                controller: positionCtrl),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(initialNode == null
+              ? 'Tambah jabatan organisasi'
+              : 'Ubah jabatan organisasi'),
+          content: SizedBox(
+            width: 460,
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppFormField(
+                      label: 'Nama pejabat',
+                      hint: 'dr. Budi Santoso',
+                      controller: personCtrl,
+                      validator: (value) =>
+                          AppValidators.validateRequired(value, 'Nama pejabat'),
+                    ),
+                    const SizedBox(height: 12),
+                    AppFormField(
+                      label: 'Jabatan atau posisi',
+                      hint: 'Kepala Klinik atau Kepala Tata Usaha',
+                      controller: positionCtrl,
+                      validator: (value) => AppValidators.validateRequired(
+                          value, 'Jabatan atau posisi'),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedHealthWorkerId,
+                      items: [
+                        const DropdownMenuItem(
+                          value: '',
+                          child: Text('Tidak ditautkan'),
+                        ),
+                        ...controller.healthWorkers.map(
+                          (worker) => DropdownMenuItem(
+                            value: worker.id,
+                            child: Text(
+                              '${worker.fullName} • ${worker.workerType.label}',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                      onChanged: (workerId) {
+                        setDialogState(() {
+                          selectedHealthWorkerId = workerId ?? '';
+                          if (selectedHealthWorkerId.isNotEmpty) {
+                            final worker = controller.healthWorkers.firstWhere(
+                                (item) => item.id == selectedHealthWorkerId);
+                            personCtrl.text = worker.fullName;
+                          }
+                        });
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Tautkan tenaga kesehatan (opsional)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    AppFormField(
+                      label: 'Urutan penampilan',
+                      hint: '0',
+                      controller: sortOrderCtrl,
+                      keyboardType: TextInputType.number,
+                      validator: (value) =>
+                          AppValidators.validateNonNegativeInt(
+                              value, 'Urutan penampilan'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            AppButton(
+              'Batal',
+              kind: BtnKind.secondary,
+              onPressed:
+                  saving ? null : () => Navigator.of(dialogContext).pop(),
+            ),
+            AppButton(
+              'Simpan',
+              icon: Icons.save_outlined,
+              kind: BtnKind.primary,
+              loading: saving,
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (!(formKey.currentState?.validate() ?? false)) return;
+                      setDialogState(() => saving = true);
+                      final success = await controller.saveOrgStructureNode(
+                        ClinicOrgStructureModel(
+                          id: initialNode?.id ?? '',
+                          clinicId: clinicId,
+                          personName: personCtrl.text.trim(),
+                          position: positionCtrl.text.trim(),
+                          healthWorkerId: selectedHealthWorkerId.isEmpty
+                              ? null
+                              : selectedHealthWorkerId,
+                          parentId: initialNode?.parentId,
+                          sortOrder: int.parse(sortOrderCtrl.text.trim()),
+                        ),
+                      );
+                      if (!dialogContext.mounted) return;
+                      if (success) {
+                        Navigator.of(dialogContext).pop();
+                      } else {
+                        setDialogState(() => saving = false);
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(
+                            content: Text(controller.errorMessage ??
+                                'Struktur organisasi belum berhasil disimpan.'),
+                          ),
+                        );
+                      }
+                    },
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () {
-              if (personCtrl.text.trim().isNotEmpty &&
-                  positionCtrl.text.trim().isNotEmpty) {
-                context.read<ClinicController>().saveOrgStructureNode(
-                      ClinicOrgStructureModel(
-                        id: '',
-                        clinicId: clinicId,
-                        personName: personCtrl.text.trim(),
-                        position: positionCtrl.text.trim(),
-                      ),
-                    );
-                Navigator.of(ctx).pop();
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
       ),
     );
   }
