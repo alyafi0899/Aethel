@@ -142,7 +142,10 @@ void main() {
         'services_facilities': {'complete': true, 'missing': []},
         'admin_legal': {'complete': true, 'missing': []},
         'health_workers': {'complete': true, 'missing': []},
-        'public_media': {'complete': false, 'missing': ['media:logo']},
+        'public_media': {
+          'complete': false,
+          'missing': ['media:logo']
+        },
       });
 
       final logoOnly = status.withPublicMediaRecords([

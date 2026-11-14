@@ -1,12 +1,10 @@
-import 'dart:math';
-
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config/feature_flags.dart';
+import '../core/utils/error_mapper.dart';
 import '../data/clinic_repository.dart';
 import '../data/models.dart';
-import '../data/supabase_clinic_repository.dart';
 
 /// App-wide state: loaded data, current page, appointments, authentication, role access.
 class AppController extends ChangeNotifier {
@@ -21,9 +19,8 @@ class AppController extends ChangeNotifier {
   late ClinicData data;
 
   // Authentication State
-  UserProfile? _currentUserProfile =
-      UserProfile.admin(); // Default initial profile
-  bool _isLoggedIn = true;
+  UserProfile? _currentUserProfile;
+  bool _isLoggedIn = false;
 
   UserProfile? get currentUserProfile => _currentUserProfile;
   bool get isLoggedIn => _isLoggedIn;
@@ -43,37 +40,37 @@ class AppController extends ChangeNotifier {
   List<Appointment> appointments = [];
 
   List<NavSection> get navSections {
-    if (!kShowDemoModules) {
-      return const [
-        NavSection('', [
-          AppPage.dashboard,
-          AppPage.clinicOperationsInternal,
-          AppPage.clinicStaff,
-          AppPage.clinicReviews,
-          AppPage.clinicProfile,
-          AppPage.settings,
-        ]),
-      ];
-    }
-    if (currentRole.isAdmin) {
-      return data.navSections;
-    }
     return const [
-      NavSection('OVERVIEW', [AppPage.dashboard, AppPage.operations]),
-      NavSection('CLINICAL CARE', [
+      NavSection('RINGKASAN', [AppPage.dashboard, AppPage.operations]),
+      NavSection('ALUR PASIEN', [
         AppPage.appointments,
         AppPage.triage,
         AppPage.consultations,
         AppPage.patients,
         AppPage.workflow,
       ]),
-      NavSection('STAFF & RESOURCES', [
-        AppPage.nurses,
+      NavSection('MANAJEMEN SDM', [
         AppPage.doctors,
+        AppPage.nurses,
+        AppPage.membership,
+      ]),
+      NavSection('LAYANAN & FASILITAS', [
         AppPage.rooms,
         AppPage.services,
+        AppPage.scheduling,
       ]),
-      NavSection('COMMUNICATION', [AppPage.notifications]),
+      NavSection('PROFIL PUBLIK', [AppPage.publicProfile, AppPage.reviews]),
+      NavSection('KEUANGAN', [AppPage.billing, AppPage.reports]),
+      NavSection('KOMUNIKASI', [AppPage.notifications]),
+      NavSection('ADMINISTRASI KLINIK', [
+        AppPage.clinicProfile,
+        AppPage.clinicStaff,
+        AppPage.clinicOperationsInternal,
+        AppPage.clinicOperationsPublic,
+        AppPage.clinicCompliance,
+        AppPage.roles,
+        AppPage.settings,
+      ]),
     ];
   }
 
@@ -95,6 +92,9 @@ class AppController extends ChangeNotifier {
 
   /// Quick Login as Admin or Nurse role
   void loginAsRole(UserRole role) {
+    if (!kUseMockData) {
+      throw StateError('Login simulasi hanya tersedia saat USE_MOCK=true.');
+    }
     if (role == UserRole.admin) {
       _currentUserProfile = UserProfile.admin();
     } else {
@@ -151,19 +151,7 @@ class AppController extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      // Return error message or fallback to local quick session if Supabase offline
-      debugPrint('Supabase Auth error: $e. Falling back to role login.');
-      final initials = email.substring(0, min(2, email.length)).toUpperCase();
-      _currentUserProfile = UserProfile(
-        name: email.split('@').first,
-        email: email,
-        role: defaultRole,
-        initials: initials,
-      );
-      _isLoggedIn = true;
-      page = AppPage.dashboard;
-      notifyListeners();
-      return null;
+      return ErrorMapper.mapError(e);
     }
   }
 
@@ -206,15 +194,13 @@ class AppController extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      return e.toString();
+      return ErrorMapper.mapError(e);
     }
   }
 
   /// Log out from session
   Future<void> logout() async {
-    try {
-      await Supabase.instance.client.auth.signOut();
-    } catch (_) {}
+    await Supabase.instance.client.auth.signOut();
     _currentUserProfile = null;
     _isLoggedIn = false;
     notifyListeners();
@@ -223,6 +209,8 @@ class AppController extends ChangeNotifier {
   void go(AppPage next) {
     switch (next) {
       case AppPage.clinicServices:
+      case AppPage.rooms:
+      case AppPage.services:
         profileTab = 1;
         next = AppPage.clinicProfile;
         break;
@@ -249,17 +237,6 @@ class AppController extends ChangeNotifier {
       default:
         break;
     }
-    if (!kShowDemoModules &&
-        !const {
-          AppPage.dashboard,
-          AppPage.clinicOperationsInternal,
-          AppPage.clinicStaff,
-          AppPage.clinicReviews,
-          AppPage.clinicProfile,
-          AppPage.settings,
-        }.contains(next)) {
-      next = AppPage.dashboard;
-    }
     page = next;
     notifyListeners();
   }
@@ -284,66 +261,22 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  String updateStatus(String id, String status) {
+    throw UnsupportedError(
+      'Perubahan status harus dilakukan melalui alur kunjungan aktif.',
+    );
+  }
+
+  String createAppointment({required String patient, required String doctor}) {
+    throw UnsupportedError(
+      'Pendaftaran harus dilakukan melalui alur kunjungan aktif.',
+    );
+  }
+
   Appointment? appointmentById(String id) {
     for (final a in appointments) {
       if (a.id == id) return a;
     }
     return null;
-  }
-
-  /// Returns the confirmation message to show in a toast.
-  String updateStatus(String id, String status) {
-    Appointment? target;
-    appointments = [
-      for (final a in appointments)
-        if (a.id == id) ...[
-          target = a.copyWith(status: status),
-          target,
-        ] else
-          a,
-    ];
-
-    final repo = _repo;
-    if (target != null && repo is SupabaseClinicRepository) {
-      repo.saveAppointment(target);
-    }
-
-    notifyListeners();
-    return 'Appointment $id updated to $status. '
-        'Notifications and audit event created.';
-  }
-
-  /// Adds a new appointment and returns the toast message.
-  String createAppointment({required String patient, required String doctor}) {
-    final id = 'APT-240617-${70 + Random().nextInt(20)}';
-    final initials = patient
-        .split(' ')
-        .where((p) => p.isNotEmpty)
-        .map((p) => p[0])
-        .join()
-        .toUpperCase();
-    final appt = Appointment(
-      id: id,
-      patient: patient,
-      initials: initials.length > 2 ? initials.substring(0, 2) : initials,
-      doctor: doctor,
-      service: 'General consultation',
-      time: '02:30 PM',
-      date: 'Jun 17, 2025',
-      room: 'Not assigned',
-      source: 'Reception',
-      payment: 'Pending',
-      status: 'Pending Confirmation',
-    );
-    appointments = [appt, ...appointments];
-
-    final repo = _repo;
-    if (repo is SupabaseClinicRepository) {
-      repo.saveAppointment(appt);
-    }
-
-    notifyListeners();
-    return 'Appointment $id, linked clinical intake, and screening session '
-        'created. Operational notifications queued.';
   }
 }

@@ -1,6 +1,6 @@
-# Prometheon Clinic OS — Production Flutter + Supabase Application
+# Prometheon Clinic OS — Flutter + Supabase Application
 
-Prometheon Clinic OS is a full-featured, production-ready Flutter healthcare operations and clinical management application powered by Supabase.
+Prometheon Clinic OS is a Flutter clinic-management application backed by Supabase. Clinical and billing workflows use the active database contract; production use still requires deployment-specific security, compliance, and provider integration review.
 
 ---
 
@@ -14,10 +14,10 @@ Prometheon Clinic OS is a full-featured, production-ready Flutter healthcare ope
 - **Private Patient Feedback**: Confidential feedback intake (`clinic_feedback_private`) with status tracking (`new`/`read`/`resolved`) and internal note management.
 - **Legal Consents**: Version-controlled terms & privacy policy agreement dialog (`legal_consents` table).
 - **Health Worker Management**: Manage doctors and nurses with sensitive PII masking (NIK 16 digits, NPWP), STR/SIP expiry tracking, duty status toggling, and supporting document uploads.
-- **Internal Operations Layer**: Real-time queue management (+/- controls, process status), operational facility status, daily statistics, and calculated staffing metrics.
+- **Clinic Operations Workflow**: Visit registration for new or existing patients, check-in, queue, intake, triage, clinical record, prescription, billing, inbox, and emergency actions backed by the active Supabase schema.
 - **Shared Public Operations Layer**: Patient-facing live view (`clinic_public_preview` RPC and `clinic_operations_public` view) with clinic status, wait time, available doctors, and publishing control.
 - **Row Level Security (RLS)**: Enforced multi-tenant data isolation per clinic using indexed SECURITY DEFINER functions (`is_clinic_member()`, `is_clinic_owner()`, `is_platform_admin()`).
-- **Clinic administrator experience**: Focused six-destination navigation, action-oriented home, simplified operations controls, onboarding field help, reusable clinic templates, and patient-visibility safeguards.
+- **Clinic administrator experience**: Eight operational navigation groups, clinic workflows, onboarding field help, reusable clinic templates, and patient-visibility safeguards.
 - **Location and support tools**: OpenStreetMap location picker with attribution, optional camera uploads, first-visit home guide, and WhatsApp support when configured.
 
 ---
@@ -46,11 +46,12 @@ lib/
 │   │   ├── ui/                       # OnboardingWizardPage, HealthWorkerListPage, HealthWorkerFormDialog, CompliancePage, ClinicReviewsPage, ClinicFeedbackPage
 │   │   └── widgets/                  # DocumentUploadTile, PublicMediaUploader
 │   └── operations/
-│       ├── data/operations_repository.dart # OperationsRepository
-│       ├── models/clinic_operations_models.dart # Internal and Public operations models
-│       └── ui/                       # InternalOperationsPage, PublicOperationsPage
+│       ├── data/operations_repository.dart # Clinic operations repository
+│       └── ui/visit_flow_page.dart   # Active visit and clinic workflow
+├── domain/                           # Clinical workflow models, repository contracts, staff access
+├── data/supabase/                    # Supabase workflow repository and realtime service
 ├── shell/                            # AppShell, AppHeader, Sidebar with KLINIK menu group
-└── pages/                            # Legacy demo pages (Appointments, Triage, Finance, etc.)
+└── pages/                            # Legacy pages not used for active clinical workflows
 ```
 
 ---
@@ -84,7 +85,7 @@ flutter run -d android \
 ### Step 1: Execute Migration SQL
 1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard).
 2. Open **SQL Editor**.
-3. Apply `supabase/migrations/0001_clinic_core.sql`, `supabase/migrations/0002_trust_and_feedback.sql`, `supabase/migrations/0003_profiles_account_type.sql`, `supabase/migrations/0003_simplify_emr_step.sql`, `supabase/migrations/0004_emr_choice_confirmed_schema_cache.sql`, and `supabase/migrations/0005_align_onboarding_submit_readiness.sql` according to the deployed database history. The EMR migrations make the step informational, refresh the PostgREST schema cache, and keep server-side submission readiness aligned with the five required sections. They also move SOP and gallery completion to recommendations and restrict SATUSEHAT secret storage to verified or under-review clinics. Do not edit already-applied migrations.
+3. Apply migrations `0001` through `0007` according to the deployed database history, including the `0003_*`, `0004_*`, and `0005_*` forward fixes. `0006_clinical_operations.sql` adds the clinic visit, clinical, billing, inbox, and emergency workflow; `0007_operational_status_access.sql` restricts operational status changes and prevents editing calculated metrics. Do not edit already-applied migrations; see [docs/FLOW.md](docs/FLOW.md) and [docs/INTEGRATION_CONTRACT.md](docs/INTEGRATION_CONTRACT.md) before deployment.
 
 Prometheon Clinic OS is recorded as the clinic's internal RME; this is not a claim of certification or official SATUSEHAT integration. Clinics remain responsible for meeting applicable requirements. Pastikan sesuai ketentuan yang berlaku.
 
@@ -133,3 +134,13 @@ flutter analyze
 # 3. Execute all test suites
 flutter test
 ```
+
+The payment webhook unit tests use Deno:
+
+```bash
+deno test --allow-env supabase/functions/payment-webhook/
+```
+
+The webhook accepts only Prometheon-normalized HMAC-signed events. Native
+Midtrans/Xendit verification adapters and live Supabase deployment tests are not
+included; see [docs/FLOW.md](docs/FLOW.md) before enabling online payments.

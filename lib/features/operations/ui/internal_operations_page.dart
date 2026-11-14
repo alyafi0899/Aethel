@@ -1,12 +1,12 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/config/feature_flags.dart';
 import '../../../core/theme/clinic_colors.dart';
 import '../../../core/theme/context_ext.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../data/models.dart';
+import '../../../features/auth/state/current_staff_controller.dart';
+import '../../../state/app_controller.dart';
 import '../../../widgets/common.dart';
 import '../../clinic/state/clinic_controller.dart';
 import '../models/clinic_operations_models.dart';
@@ -20,20 +20,17 @@ class InternalOperationsPage extends StatefulWidget {
 }
 
 class _InternalOperationsPageState extends State<InternalOperationsPage> {
-  Timer? _saveTimer;
   OperationalMode _mode = OperationalMode.closed;
-  int _currentQueue = 0;
-  int _totalQueues = 0;
-  int _waitMinutes = 0;
   String _saveStatus = 'Tersimpan';
   bool _advancedExpanded = false;
-  ClinicOperationsInternalModel? _lastSaved;
+  String? _loadedClinicId;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final ops = context.read<ClinicController>().internalOperations;
-    if (ops != null && _lastSaved == null) {
+    if (ops != null && ops.clinicId != _loadedClinicId) {
+      _loadedClinicId = ops.clinicId;
       _applyModel(ops);
     }
   }
@@ -43,16 +40,6 @@ class _InternalOperationsPageState extends State<InternalOperationsPage> {
       facilityStatus: ops.facilityStatus,
       queueStatus: ops.queueProcessStatus,
     );
-    _currentQueue = ops.currentQueueNumber;
-    _totalQueues = ops.totalQueues;
-    _waitMinutes = ops.averageWaitTime;
-    _lastSaved = ops;
-  }
-
-  @override
-  void dispose() {
-    _saveTimer?.cancel();
-    super.dispose();
   }
 
   ClinicOperationsInternalModel? _updatedModel(
@@ -61,21 +48,16 @@ class _InternalOperationsPageState extends State<InternalOperationsPage> {
     return current.copyWith(
       facilityStatus: _mode.facilityStatus,
       queueProcessStatus: _mode.queueStatus,
-      currentQueueNumber: _currentQueue,
-      totalQueues: _totalQueues,
-      averageWaitTime: _waitMinutes,
     );
   }
 
-  void _saveDebounced() {
-    setState(() => _saveStatus = 'Menyimpan...');
-    _saveTimer?.cancel();
-    _saveTimer = Timer(const Duration(milliseconds: 600), _save);
-  }
-
   Future<void> _save() async {
-    _saveTimer?.cancel();
     final controller = context.read<ClinicController>();
+    final staff = context.read<CurrentStaffController>();
+    if (staff.access?.canManageClinic != true) {
+      setState(() => _saveStatus = 'Akses terbatas');
+      return;
+    }
     final updated = _updatedModel(controller.internalOperations);
     if (updated == null) {
       setState(() => _saveStatus = 'Data operasional belum tersedia');
@@ -87,7 +69,6 @@ class _InternalOperationsPageState extends State<InternalOperationsPage> {
       _saveStatus = saved
           ? 'Tersimpan ✓'
           : 'Gagal menyimpan${controller.errorMessage == null ? '' : ': ${controller.errorMessage}'}';
-      if (saved) _lastSaved = updated;
     });
   }
 
@@ -99,53 +80,14 @@ class _InternalOperationsPageState extends State<InternalOperationsPage> {
     await _save();
   }
 
-  Future<void> _restartQueue() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Mulai ulang antrean?'),
-        content: const Text(
-            'Nomor antrean dan jumlah antrean hari ini akan kembali ke 0.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Mulai ulang'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    setState(() {
-      _currentQueue = 0;
-      _totalQueues = 0;
-    });
-    await _save();
-  }
-
-  void _nextQueue() {
-    setState(() {
-      _currentQueue++;
-      if (_totalQueues < _currentQueue) _totalQueues = _currentQueue;
-    });
-    _saveDebounced();
-  }
-
-  void _previousQueue() {
-    if (_currentQueue == 0) return;
-    setState(() => _currentQueue--);
-    _saveDebounced();
-  }
-
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<ClinicController>();
+    final staff = context.watch<CurrentStaffController>();
     final ops = controller.internalOperations;
     final preview = controller.publicPreview;
     final c = context.c;
+    final canManage = staff.access?.canManageClinic == true;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,10 +121,16 @@ class _InternalOperationsPageState extends State<InternalOperationsPage> {
                 ],
               ),
               const SizedBox(height: 12),
-              OperationalStatusControls(
-                selected: _mode,
-                onChanged: _setMode,
-              ),
+              if (canManage)
+                OperationalStatusControls(
+                  selected: _mode,
+                  onChanged: _setMode,
+                )
+              else
+                Text(
+                  'Status saat ini: ${_mode.label}. Hanya pemilik atau admin yang dapat mengubahnya.',
+                  style: context.sBody,
+                ),
             ],
           ),
         ),
@@ -193,77 +141,36 @@ class _InternalOperationsPageState extends State<InternalOperationsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Antrean pasien', style: context.sH3),
+              const SizedBox(height: 8),
+              Text(
+                'Nomor antrean dan waktu tunggu dihitung dari kunjungan aktif.',
+                style: context.sBody,
+              ),
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 16,
+                runSpacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  IconButton.filledTonal(
-                    tooltip: 'Mundur satu nomor',
-                    onPressed: _previousQueue,
-                    icon: const Icon(Icons.remove),
+                  _Metric(
+                    title: 'Nomor dilayani',
+                    value: '${ops?.currentQueueNumber ?? 0}',
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text('Nomor yang sedang dilayani',
-                            style: context.sSmall),
-                        Text(
-                          '$_currentQueue',
-                          style: context.sH1.copyWith(
-                            fontSize: 50,
-                            color: c.accent,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text('Dari $_totalQueues antrean hari ini',
-                            style: context.sSmall),
-                      ],
-                    ),
+                  _Metric(
+                    title: 'Antrean hari ini',
+                    value: '${ops?.totalQueues ?? 0}',
                   ),
-                  const SizedBox(width: 12),
+                  _Metric(
+                    title: 'Perkiraan tunggu',
+                    value: '${ops?.averageWaitTime ?? 0} menit',
+                  ),
                   FilledButton.icon(
-                    onPressed: _nextQueue,
-                    icon: const Icon(Icons.campaign_outlined),
-                    label: const Text('Panggil nomor berikutnya'),
+                    onPressed: () =>
+                        context.read<AppController>().go(AppPage.workflow),
+                    icon: const Icon(Icons.groups_outlined),
+                    label: const Text('Buka alur antrean'),
                   ),
                 ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  const Icon(Icons.hourglass_bottom),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text('Perkiraan waktu tunggu: $_waitMinutes menit',
-                        style: context.sBody),
-                  ),
-                  IconButton(
-                    tooltip: 'Kurangi waktu tunggu',
-                    onPressed: _waitMinutes == 0
-                        ? null
-                        : () {
-                            setState(() => _waitMinutes--);
-                            _saveDebounced();
-                          },
-                    icon: const Icon(Icons.remove_circle_outline),
-                  ),
-                  IconButton(
-                    tooltip: 'Tambah waktu tunggu',
-                    onPressed: () {
-                      setState(() => _waitMinutes++);
-                      _saveDebounced();
-                    },
-                    icon: const Icon(Icons.add_circle_outline),
-                  ),
-                ],
-              ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: _restartQueue,
-                  icon: const Icon(Icons.restart_alt),
-                  label: const Text('Mulai ulang antrean hari ini'),
-                ),
               ),
             ],
           ),
@@ -281,7 +188,15 @@ class _InternalOperationsPageState extends State<InternalOperationsPage> {
                         style: context.sH3),
                   ),
                   TextButton.icon(
-                    onPressed: controller.refreshOperations,
+                    onPressed: () async {
+                      final refreshed = await controller.refreshOperations();
+                      if (refreshed && mounted) {
+                        final latest = controller.internalOperations;
+                        if (latest != null) {
+                          setState(() => _applyModel(latest));
+                        }
+                      }
+                    },
                     icon: const Icon(Icons.refresh),
                     label: const Text('Perbarui'),
                   ),
@@ -346,19 +261,13 @@ class _InternalOperationsPageState extends State<InternalOperationsPage> {
                       const Text('Tandai klinik sedang tidak melayani pasien'),
                   trailing: Switch(
                     value: _mode == OperationalMode.maintenance,
-                    onChanged: (enabled) => _setMode(enabled
-                        ? OperationalMode.maintenance
-                        : OperationalMode.closed),
+                    onChanged: canManage
+                        ? (enabled) => _setMode(enabled
+                            ? OperationalMode.maintenance
+                            : OperationalMode.closed)
+                        : null,
                   ),
                 ),
-                if (kShowManualOperationStats && ops != null)
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'Statistik manual saat ini: ${ops.totalRegisteredPatients} pasien terdaftar, ${ops.totalDailyVisitors} pengunjung.',
-                      style: context.sSmall,
-                    ),
-                  ),
               ],
             ],
           ),

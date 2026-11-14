@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/config/feature_flags.dart';
 import '../core/responsive.dart';
 import '../core/theme/context_ext.dart';
 import '../data/models.dart';
 import '../features/auth/state/auth_controller.dart';
+import '../features/auth/state/current_staff_controller.dart';
 import '../features/auth/ui/legal_consent_dialog.dart';
 import '../features/clinic/data/legal_consent_repository.dart';
 import '../features/clinic/state/clinic_controller.dart';
@@ -19,24 +19,10 @@ import '../features/clinic/ui/profile_legal_page.dart';
 import '../features/clinic/ui/reviews_feedback_page.dart';
 import '../features/operations/ui/internal_operations_page.dart';
 import '../features/operations/ui/public_operations_page.dart';
-import '../pages/appointments_page.dart';
-import '../pages/consultations_page.dart';
-import '../pages/dashboard_page.dart';
-import '../pages/doctors_page.dart';
-import '../pages/finance_page.dart';
-import '../pages/marketplace_page.dart';
-import '../pages/notifications_page.dart';
-import '../pages/operations_page.dart';
-import '../pages/patients_page.dart';
-import '../pages/permissions_page.dart';
-import '../pages/placeholder_page.dart';
-import '../pages/reports_page.dart';
-import '../pages/resources_page.dart';
-import '../pages/services_page.dart';
-import '../pages/settings_page.dart';
-import '../pages/triage_page.dart';
+import '../features/operations/ui/visit_flow_page.dart';
 import '../state/app_controller.dart';
 import '../widgets/buttons.dart';
+import '../widgets/common.dart';
 import 'app_header.dart';
 import 'sidebar.dart';
 
@@ -287,54 +273,58 @@ class _PageBody extends StatelessWidget {
 
       // Demo Pages
       case AppPage.dashboard:
-        return kShowDemoModules ? const DashboardPage() : const HomePage();
+        return const HomePage();
       case AppPage.operations:
-        return const OperationsPage();
+        return const InternalOperationsPage();
       case AppPage.appointments:
-        return const AppointmentsPage();
+        return const VisitFlowPage(initialView: VisitFlowView.queue);
       case AppPage.triage:
-        return const TriagePage();
+        return const VisitFlowPage(initialView: VisitFlowView.triage);
       case AppPage.doctors:
-        return const DoctorsPage();
-      case AppPage.rooms:
-        return const ResourcesPage();
-      case AppPage.notifications:
-        return const NotificationsPage();
-      case AppPage.billing:
-        return const FinancePage();
-      case AppPage.reports:
-        return const ReportsPage();
-      case AppPage.patients:
-        return const PatientsPage();
-      case AppPage.services:
-        return const ServicesPage();
-      case AppPage.consultations:
-        return const ConsultationsPage();
-      case AppPage.publicProfile:
-        return const MarketplacePage();
-      case AppPage.roles:
-        return const PermissionsPage();
-      case AppPage.settings:
-        return kShowDemoModules
-            ? const SettingsPage()
-            : const ClinicSettingsPage();
-      case AppPage.workflow:
       case AppPage.nurses:
       case AppPage.membership:
+        return const HealthWorkerListPage();
+      case AppPage.rooms:
+        return const ProfileLegalPage();
+      case AppPage.notifications:
+        return const VisitFlowPage(initialView: VisitFlowView.inbox);
+      case AppPage.billing:
+        return const VisitFlowPage(initialView: VisitFlowView.billing);
+      case AppPage.reports:
+        return const VisitFlowPage(initialView: VisitFlowView.billing);
+      case AppPage.patients:
+        return const VisitFlowPage(initialView: VisitFlowView.patients);
+      case AppPage.services:
+        return const ProfileLegalPage();
+      case AppPage.consultations:
+        return const VisitFlowPage(initialView: VisitFlowView.consultations);
+      case AppPage.publicProfile:
+        return const PublicOperationsPage();
+      case AppPage.roles:
+        return const _StaffAccessPage();
+      case AppPage.settings:
+        return const ClinicSettingsPage();
+      case AppPage.workflow:
+        return const VisitFlowPage();
       case AppPage.scheduling:
+        return const VisitFlowPage(initialView: VisitFlowView.queue);
       case AppPage.reviews:
-        return PlaceholderPage(page: page);
+        return const ReviewsFeedbackPage();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final phone = Breakpoints.isPhone(context);
-    if (!kShowDemoModules &&
-        (page == AppPage.dashboard ||
-            page == AppPage.clinicProfile ||
-            page == AppPage.clinicReviews ||
-            page == AppPage.settings)) {
+    if (const {
+      AppPage.dashboard,
+      AppPage.clinicProfile,
+      AppPage.rooms,
+      AppPage.services,
+      AppPage.clinicReviews,
+      AppPage.settings,
+      AppPage.clinicOperationsInternal,
+    }.contains(page)) {
       return Padding(
         padding: EdgeInsets.fromLTRB(
           phone ? 13 : 30,
@@ -364,6 +354,50 @@ class _PageBody extends StatelessWidget {
           child: _page(),
         ),
       ),
+    );
+  }
+}
+
+class _StaffAccessPage extends StatelessWidget {
+  const _StaffAccessPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final staff = context.watch<CurrentStaffController>();
+    final access = staff.access;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const PageHead(
+          title: 'Peran & Akses',
+          desc:
+              'Hak akses ditetapkan oleh keanggotaan klinik dan kebijakan server.',
+        ),
+        AppCard(
+          child: access == null
+              ? const Text('Keanggotaan klinik belum tersedia.')
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Peran: ${access.role}'),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Akses klinis: ${access.clinicalAccess ? 'Diaktifkan' : 'Tidak diaktifkan'}',
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Akses baca data klinis: ${access.canViewClinical ? 'Diizinkan' : 'Tidak diizinkan'}',
+                    ),
+                    Text(
+                      'Bertindak sebagai dokter: ${access.canActAsDoctor ? 'Diizinkan' : 'Tidak diizinkan'}',
+                    ),
+                    Text(
+                      'Pengelolaan tagihan: ${access.canManageBilling ? 'Diizinkan' : 'Tidak diizinkan'}',
+                    ),
+                  ],
+                ),
+        ),
+      ],
     );
   }
 }

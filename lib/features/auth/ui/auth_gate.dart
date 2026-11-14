@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/context_ext.dart';
 import '../../../shell/app_shell.dart';
+import '../../../state/app_controller.dart';
 import '../../../widgets/buttons.dart';
 import '../../clinic/models/clinic_enums.dart';
 import '../../clinic/state/clinic_controller.dart';
@@ -39,7 +40,47 @@ class _AuthGateState extends State<AuthGate> {
 
     // 3. Check account type
     final profile = authCtrl.profile;
-    if (profile != null && !profile.isClinicAccount) {
+    if (profile == null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 56, color: Colors.red),
+                const SizedBox(height: 12),
+                Text('Profil akun belum dapat dimuat', style: context.sH2),
+                const SizedBox(height: 8),
+                Text(
+                  authCtrl.errorMessage ??
+                      'Periksa koneksi, lalu coba muat ulang profil.',
+                  style: context.sSmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  children: [
+                    AppButton(
+                      'Coba Lagi',
+                      icon: Icons.refresh,
+                      onPressed: authCtrl.refreshProfile,
+                    ),
+                    AppButton(
+                      'Keluar',
+                      kind: BtnKind.secondary,
+                      onPressed: authCtrl.signOut,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    if (!profile.isClinicAccount) {
       return Scaffold(
         body: Center(
           child: Padding(
@@ -79,12 +120,13 @@ class _AuthGateState extends State<AuthGate> {
     if (uid != null && _loadedUserId != uid) {
       _loadedUserId = uid;
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<AppController>().load();
         context.read<ClinicController>().loadClinicForUser(uid);
       });
       return const _BrandSplashScreen(message: 'Memuat profil klinik...');
     }
 
-    if (clinicCtrl.loading && clinicCtrl.clinic == null) {
+    if (clinicCtrl.loading) {
       return const _BrandSplashScreen(message: 'Menyiapkan data klinik...');
     }
 

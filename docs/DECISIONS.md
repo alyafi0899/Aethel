@@ -64,3 +64,22 @@ This document records key design decisions, technical trade-offs, and security c
 - **Decision**: The `clinic_onboarding_status` RPC and submission gate use the same five required sections as the wizard. RME remains informational and cannot block `submit_clinic_for_review`.
 - **Rationale**: The client can display every section as complete while an older deployed RPC still rejects submission for legacy RME requirements. Migration `0005_align_onboarding_submit_readiness.sql` reapplies the server-side status function and reloads the PostgREST schema cache.
 - **Operations**: Apply forward migrations `0004` and `0005` to the Supabase project before retrying submission. An `onboarding_incomplete` response containing only legacy RME requirements is surfaced as a migration action rather than a generic form error.
+
+## 15. Active Clinic Operations Workflow
+- **Decision**: The active clinic workflow uses the `0006` encounter, queue, clinical, invoice, inbox, and emergency schema. All state changes go through the RPC contract; legacy repositories fail explicitly instead of reading or writing legacy tables or returning demo data.
+- **Rationale**: The older pages target a different database model and must not silently become a source of synthetic or cross-clinic patient data.
+- **Access**: Server RLS and role checks remain authoritative. Client-side staff capabilities only hide or expose actions; they do not grant database access.
+
+## 16. Payment Webhook Boundary
+- **Decision**: The Edge Function accepts only normalized payment events signed with a dedicated HMAC secret, then invokes the service-role-only `apply_payment_event` RPC. JWT verification is disabled for this one webhook because external providers do not send Supabase user JWTs; HMAC verification is mandatory.
+- **Rationale**: The service-role key must remain server-only, and payment status must not be trusted from a browser or patient client.
+- **Limitation**: The function is not a native Midtrans/Xendit adapter. A provider-specific signature, timestamp/replay, invoice, amount, and status verifier must be implemented and tested before connecting a gateway.
+
+## 17. Operational Metrics and Status Mutations
+- **Decision**: Queue totals, current queue number, and wait-time metrics are server-calculated and read-only in the clinic UI. Only clinic owners/admins can change facility and queue-process statuses through `update_clinic_operational_status`.
+- **Rationale**: Hand-editing counters made the operations dashboard disagree with the actual encounter/ticket workflow and allowed members to overwrite calculated columns.
+- **Migration**: Apply `0007_operational_status_access.sql`; it revokes direct client table updates and installs the role-checked RPC. The UI routes queue work to the encounter workflow.
+
+## 18. Authentication and Clinic Snapshot Isolation
+- **Decision**: Profile refreshes are generation-checked against the current auth user. Clinic snapshots are cleared while loading another account and stale in-flight requests cannot repopulate them. Authenticated sessions with no readable profile are blocked from clinic routing and receive retry/sign-out actions.
+- **Rationale**: A failed or overlapping load previously could leave the prior user's profile, membership, clinic, or operational data available in provider state.

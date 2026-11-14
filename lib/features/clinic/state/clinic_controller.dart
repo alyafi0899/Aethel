@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../operations/data/operations_repository.dart';
 import '../../operations/models/clinic_operations_models.dart';
@@ -56,45 +55,23 @@ class ClinicController extends ChangeNotifier {
     _startComplianceTimer();
   }
 
-  static bool get _isSupabaseInitialized {
-    try {
-      Supabase.instance.client;
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  static ClinicProfileRepository _defaultProfileRepo() => _isSupabaseInitialized
-      ? SupabaseClinicProfileRepository()
-      : FakeClinicProfileRepository();
-  static ClinicCatalogRepository _defaultCatalogRepo() => _isSupabaseInitialized
-      ? SupabaseClinicCatalogRepository()
-      : FakeClinicCatalogRepository();
-  static StaffRepository _defaultStaffRepo() => _isSupabaseInitialized
-      ? SupabaseStaffRepository()
-      : FakeStaffRepository();
-  static DocumentRepository _defaultDocumentRepo() => _isSupabaseInitialized
-      ? SupabaseDocumentRepository()
-      : FakeDocumentRepository();
-  static OperationsRepository _defaultOperationsRepo() => _isSupabaseInitialized
-      ? SupabaseOperationsRepository()
-      : FakeOperationsRepository();
-  static MediaRepository _defaultMediaRepo() => _isSupabaseInitialized
-      ? SupabaseMediaRepository()
-      : FakeMediaRepository();
-  static ComplianceRepository _defaultComplianceRepo() => _isSupabaseInitialized
-      ? SupabaseComplianceRepository()
-      : FakeComplianceRepository();
-  static ReviewsRepository _defaultReviewsRepo() => _isSupabaseInitialized
-      ? SupabaseReviewsRepository()
-      : FakeReviewsRepository();
-  static FeedbackRepository _defaultFeedbackRepo() => _isSupabaseInitialized
-      ? SupabaseFeedbackRepository()
-      : FakeFeedbackRepository();
-  static LegalConsentRepository _defaultLegalRepo() => _isSupabaseInitialized
-      ? SupabaseLegalConsentRepository()
-      : FakeLegalConsentRepository();
+  static ClinicProfileRepository _defaultProfileRepo() =>
+      SupabaseClinicProfileRepository();
+  static ClinicCatalogRepository _defaultCatalogRepo() =>
+      SupabaseClinicCatalogRepository();
+  static StaffRepository _defaultStaffRepo() => SupabaseStaffRepository();
+  static DocumentRepository _defaultDocumentRepo() =>
+      SupabaseDocumentRepository();
+  static OperationsRepository _defaultOperationsRepo() =>
+      SupabaseOperationsRepository();
+  static MediaRepository _defaultMediaRepo() => SupabaseMediaRepository();
+  static ComplianceRepository _defaultComplianceRepo() =>
+      SupabaseComplianceRepository();
+  static ReviewsRepository _defaultReviewsRepo() => SupabaseReviewsRepository();
+  static FeedbackRepository _defaultFeedbackRepo() =>
+      SupabaseFeedbackRepository();
+  static LegalConsentRepository _defaultLegalRepo() =>
+      SupabaseLegalConsentRepository();
 
   final ClinicProfileRepository _profileRepo;
   final ClinicCatalogRepository _catalogRepo;
@@ -108,6 +85,7 @@ class ClinicController extends ChangeNotifier {
   final LegalConsentRepository _legalRepo;
 
   Timer? _complianceTimer;
+  int _clinicLoadGeneration = 0;
 
   bool _loading = false;
   String? _errorMessage;
@@ -168,77 +146,160 @@ class ClinicController extends ChangeNotifier {
 
   void _startComplianceTimer() {
     _complianceTimer?.cancel();
-    if (_isSupabaseInitialized) {
-      _complianceTimer = Timer.periodic(const Duration(hours: 6), (_) {
-        refreshCompliance();
-      });
-    }
+    if (_profileRepo is! SupabaseClinicProfileRepository) return;
+    _complianceTimer = Timer.periodic(const Duration(hours: 6), (_) {
+      refreshCompliance();
+    });
   }
 
+  void _clearClinicState({bool clearConsents = true}) {
+    _clinic = null;
+    _onboardingStatus = const OnboardingStatusModel(status: ClinicStatus.draft);
+    _emrSettings = null;
+    _emrInitializationError = null;
+    _services = [];
+    _facilities = [];
+    _equipment = [];
+    _medicines = [];
+    _operatingHours = [];
+    _orgStructure = [];
+    _healthWorkers = [];
+    _clinicDocuments = [];
+    _mediaList = [];
+    _complianceStatus = const ComplianceStatusModel();
+    _reviewStats = const ClinicReviewStatsModel();
+    _reviews = [];
+    _feedbackList = [];
+    if (clearConsents) _userConsents = [];
+    _internalOperations = null;
+    _publicPreview = null;
+  }
+
+  bool _isCurrentClinicLoad(int generation) =>
+      generation == _clinicLoadGeneration;
+
   Future<void> loadClinicForUser(String userId) async {
+    final generation = ++_clinicLoadGeneration;
+    _clearClinicState();
     _loading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       final fetchedClinic = await _profileRepo.fetchClinicByOwnerId(userId);
+      if (!_isCurrentClinicLoad(generation)) return;
       if (fetchedClinic != null) {
-        await loadClinicData(fetchedClinic.id);
-        await loadUserConsents(userId);
-      } else {
-        _clinic = null;
+        await _loadClinicData(fetchedClinic.id, generation);
+        if (!_isCurrentClinicLoad(generation)) return;
+        _userConsents = await _legalRepo.fetchUserConsents(userId);
       }
     } catch (e) {
-      _errorMessage = ErrorMapper.mapError(e);
+      if (_isCurrentClinicLoad(generation)) {
+        _clearClinicState();
+        _errorMessage = ErrorMapper.mapError(e);
+      }
+    } finally {
+      if (_isCurrentClinicLoad(generation)) {
+        _loading = false;
+        notifyListeners();
+      }
     }
-
-    _loading = false;
-    notifyListeners();
   }
 
   Future<void> loadClinicData(String id) async {
+    final generation = ++_clinicLoadGeneration;
+    final previousConsents = _userConsents;
+    final preserveConsents = _clinic?.id == id;
+    _clearClinicState(clearConsents: !preserveConsents);
+    if (preserveConsents) _userConsents = previousConsents;
     _loading = true;
     _errorMessage = null;
-    _emrInitializationError = null;
     notifyListeners();
 
     try {
-      _clinic = await _profileRepo.fetchClinicById(id);
-      _emrSettings = null;
-      try {
-        _emrSettings = await _profileRepo.fetchEmrSettings(id);
-        await ensurePrometheonEmrSettings();
-      } catch (error) {
-        _emrInitializationError = ErrorMapper.mapError(error);
-      }
-      _onboardingStatus = await _profileRepo.getOnboardingStatus(id);
-      _services = await _catalogRepo.fetchServices(id);
-      _facilities = await _catalogRepo.fetchFacilities(id);
-      _equipment = await _catalogRepo.fetchEquipment(id);
-      _medicines = await _catalogRepo.fetchMedicines(id);
-      _operatingHours = await _catalogRepo.fetchOperatingHours(id);
-      _orgStructure = await _profileRepo.fetchOrgStructure(id);
-      _healthWorkers = await _staffRepo.fetchHealthWorkers(id);
-      _clinicDocuments = await _documentRepo.fetchClinicDocuments(id);
-      _mediaList = await _mediaRepo.fetchMedia(id);
-      _onboardingStatus =
-          _onboardingStatus.withPublicMediaRecords(_mediaList);
-
-      await refreshCompliance();
-
-      try {
-        _reviewStats = await _reviewsRepo.fetchReviewStats(id);
-        _reviews = await _reviewsRepo.fetchReviewsManage(clinicId: id);
-        _feedbackList = await _feedbackRepo.fetchPrivateFeedback(clinicId: id);
-        _internalOperations = await _operationsRepo.fetchInternalOperations(id);
-        _publicPreview = await _operationsRepo.fetchPublicPreview(id);
-      } catch (_) {}
+      await _loadClinicData(id, generation);
     } catch (e) {
-      _errorMessage = ErrorMapper.mapError(e);
+      if (_isCurrentClinicLoad(generation)) {
+        _clearClinicState();
+        _errorMessage = ErrorMapper.mapError(e);
+      }
+    } finally {
+      if (_isCurrentClinicLoad(generation)) {
+        _loading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> _loadClinicData(String id, int generation) async {
+    final clinic = await _profileRepo.fetchClinicById(id);
+    if (!_isCurrentClinicLoad(generation)) return;
+    if (clinic == null) {
+      throw StateError('Data klinik tidak ditemukan.');
+    }
+    _clinic = clinic;
+
+    try {
+      final settings = await _profileRepo.fetchEmrSettings(id);
+      if (!_isCurrentClinicLoad(generation)) return;
+      _emrSettings = settings;
+      if (settings.emrAppType != EmrAppType.internal ||
+          settings.emrAppName != kPrometheonEmrAppName ||
+          !settings.emrChoiceConfirmed) {
+        _emrSettings = await _profileRepo.updateEmrSettings(
+          settings.copyWith(
+            clinicId: id,
+            emrAppType: EmrAppType.internal,
+            emrAppName: kPrometheonEmrAppName,
+            emrChoiceConfirmed: true,
+          ),
+        );
+        if (!_isCurrentClinicLoad(generation)) return;
+      }
+    } catch (error) {
+      if (!_isCurrentClinicLoad(generation)) return;
+      _emrInitializationError = ErrorMapper.mapError(error);
     }
 
-    _loading = false;
-    notifyListeners();
+    _onboardingStatus = await _profileRepo.getOnboardingStatus(id);
+    if (!_isCurrentClinicLoad(generation)) return;
+    _services = await _catalogRepo.fetchServices(id);
+    if (!_isCurrentClinicLoad(generation)) return;
+    _facilities = await _catalogRepo.fetchFacilities(id);
+    if (!_isCurrentClinicLoad(generation)) return;
+    _equipment = await _catalogRepo.fetchEquipment(id);
+    if (!_isCurrentClinicLoad(generation)) return;
+    _medicines = await _catalogRepo.fetchMedicines(id);
+    if (!_isCurrentClinicLoad(generation)) return;
+    _operatingHours = await _catalogRepo.fetchOperatingHours(id);
+    if (!_isCurrentClinicLoad(generation)) return;
+    _orgStructure = await _profileRepo.fetchOrgStructure(id);
+    if (!_isCurrentClinicLoad(generation)) return;
+    _healthWorkers = await _staffRepo.fetchHealthWorkers(id);
+    if (!_isCurrentClinicLoad(generation)) return;
+    _clinicDocuments = await _documentRepo.fetchClinicDocuments(id);
+    if (!_isCurrentClinicLoad(generation)) return;
+    _mediaList = await _mediaRepo.fetchMedia(id);
+    if (!_isCurrentClinicLoad(generation)) return;
+    _onboardingStatus = _onboardingStatus.withPublicMediaRecords(_mediaList);
+    _complianceStatus = await _complianceRepo.fetchComplianceStatus(id);
+    if (!_isCurrentClinicLoad(generation)) return;
+
+    try {
+      _reviewStats = await _reviewsRepo.fetchReviewStats(id);
+      if (!_isCurrentClinicLoad(generation)) return;
+      _reviews = await _reviewsRepo.fetchReviewsManage(clinicId: id);
+      if (!_isCurrentClinicLoad(generation)) return;
+      _feedbackList = await _feedbackRepo.fetchPrivateFeedback(clinicId: id);
+      if (!_isCurrentClinicLoad(generation)) return;
+      _internalOperations = await _operationsRepo.fetchInternalOperations(id);
+      if (!_isCurrentClinicLoad(generation)) return;
+      _publicPreview = await _operationsRepo.fetchPublicPreview(id);
+    } catch (error) {
+      if (_isCurrentClinicLoad(generation)) {
+        _errorMessage = ErrorMapper.mapError(error);
+      }
+    }
   }
 
   Future<bool> ensurePrometheonEmrSettings() async {
@@ -809,8 +870,7 @@ class ClinicController extends ChangeNotifier {
     try {
       _mediaList = await _mediaRepo.fetchMedia(clinicId!);
       final latestStatus = await _profileRepo.getOnboardingStatus(clinicId!);
-      _onboardingStatus =
-          latestStatus.withPublicMediaRecords(_mediaList);
+      _onboardingStatus = latestStatus.withPublicMediaRecords(_mediaList);
       if (!_onboardingStatus.readyToSubmit) {
         final missing = _onboardingStatus.requiredMissingItems
             .map(ErrorMapper.technicalKeyToIndonesian)
@@ -824,8 +884,7 @@ class ClinicController extends ChangeNotifier {
       }
 
       _onboardingStatus = await _profileRepo.submitClinicForReview(clinicId!);
-      _onboardingStatus =
-          _onboardingStatus.withPublicMediaRecords(_mediaList);
+      _onboardingStatus = _onboardingStatus.withPublicMediaRecords(_mediaList);
       _clinic = await _profileRepo.fetchClinicById(clinicId!);
       _loading = false;
       notifyListeners();

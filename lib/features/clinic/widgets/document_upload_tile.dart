@@ -474,8 +474,8 @@ class _DocumentUploadTileState extends State<DocumentUploadTile> {
                         Expanded(
                           child: Text(
                             'Dokumen dapat dilihat atau ditukar (unggah ulang). Mengganti berkas akan mengembalikan status ke "Menunggu Peninjauan".',
-                            style: context.sSmall
-                                .copyWith(color: Colors.blue.shade900, fontSize: 11),
+                            style: context.sSmall.copyWith(
+                                color: Colors.blue.shade900, fontSize: 11),
                           ),
                         ),
                       ],

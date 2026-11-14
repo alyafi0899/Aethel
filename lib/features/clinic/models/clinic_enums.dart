@@ -22,7 +22,11 @@ enum ClinicStatus {
 
 enum ClinicRole {
   owner('owner', 'Pemilik Utama'),
-  admin('admin', 'Administrator Klinik');
+  admin('admin', 'Administrator Klinik'),
+  receptionist('receptionist', 'Resepsionis'),
+  cashier('cashier', 'Kasir'),
+  nurse('nurse', 'Perawat'),
+  doctor('doctor', 'Dokter');
 
   const ClinicRole(this.dbValue, this.label);
   final String dbValue;

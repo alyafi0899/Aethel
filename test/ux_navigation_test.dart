@@ -5,9 +5,15 @@ import 'package:clinic_operations_platform/data/models.dart';
 import 'package:clinic_operations_platform/data/mock_data.dart';
 import 'package:clinic_operations_platform/features/auth/data/auth_repository.dart';
 import 'package:clinic_operations_platform/features/auth/state/auth_controller.dart';
+import 'package:clinic_operations_platform/features/auth/state/current_staff_controller.dart';
 import 'package:clinic_operations_platform/features/clinic/data/clinic_catalog_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/clinic_profile_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/compliance_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/document_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/feedback_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/legal_consent_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/media_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/reviews_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/staff_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_enums.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_model.dart';
@@ -34,12 +40,18 @@ Widget _app({required AppController appController}) {
     staffRepo: FakeStaffRepository(),
     documentRepo: FakeDocumentRepository(),
     operationsRepo: FakeOperationsRepository(),
+    mediaRepo: FakeMediaRepository(),
+    complianceRepo: FakeComplianceRepository(),
+    reviewsRepo: FakeReviewsRepository(),
+    feedbackRepo: FakeFeedbackRepository(),
+    legalRepo: FakeLegalConsentRepository(),
   );
   return MultiProvider(
     providers: [
       ChangeNotifierProvider.value(value: themeController),
       ChangeNotifierProvider.value(value: appController),
       ChangeNotifierProvider.value(value: authController),
+      ChangeNotifierProvider.value(value: CurrentStaffController()),
       ChangeNotifierProvider.value(value: clinicController),
     ],
     child: MaterialApp(
@@ -52,7 +64,7 @@ Widget _app({required AppController appController}) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('menu desktop hanya menampilkan enam tujuan klinik',
+  testWidgets('menu desktop menampilkan delapan grup operasional',
       (tester) async {
     tester.view.physicalSize = const Size(1200, 900);
     tester.view.devicePixelRatio = 1;
@@ -61,19 +73,21 @@ void main() {
     await tester.pumpWidget(_app(appController: appController));
     await tester.pumpAndSettle();
 
-    for (final label in [
-      'Beranda',
-      'Operasional',
-      'Tenaga Kesehatan',
-      'Ulasan & Masukan',
-      'Profil & Legal',
-      'Pengaturan',
-    ]) {
-      expect(find.text(label), findsWidgets);
-    }
-    expect(find.text('Appointments'), findsNothing);
-    expect(find.text('Patients'), findsNothing);
-    expect(find.text('Reports'), findsNothing);
+    expect(appController.navSections, hasLength(8));
+    expect(
+      appController.navSections.map((section) => section.title),
+      [
+        'RINGKASAN',
+        'ALUR PASIEN',
+        'MANAJEMEN SDM',
+        'LAYANAN & FASILITAS',
+        'PROFIL PUBLIK',
+        'KEUANGAN',
+        'KOMUNIKASI',
+        'ADMINISTRASI KLINIK',
+      ],
+    );
+    expect(find.text('Beranda'), findsWidgets);
 
     appController.dispose();
   });
@@ -97,10 +111,25 @@ void main() {
     appController.dispose();
   });
 
-  test('akses langsung ke modul demo dialihkan ke Beranda', () async {
+  test('navigasi langsung ke alur kunjungan tidak dialihkan', () async {
     final appController = AppController(_ImmediateClinicRepository());
     appController.go(AppPage.appointments);
-    expect(appController.page, AppPage.dashboard);
+    expect(appController.page, AppPage.appointments);
+    await appController.load();
+    appController.dispose();
+  });
+
+  test('halaman layanan dan ruangan masuk ke tab profil dengan batas tinggi',
+      () async {
+    final appController = AppController(_ImmediateClinicRepository());
+
+    appController.go(AppPage.rooms);
+    expect(appController.page, AppPage.clinicProfile);
+    expect(appController.profileTab, 1);
+
+    appController.go(AppPage.services);
+    expect(appController.page, AppPage.clinicProfile);
+    expect(appController.profileTab, 1);
     await appController.load();
     appController.dispose();
   });
@@ -120,6 +149,11 @@ void main() {
       staffRepo: FakeStaffRepository(),
       documentRepo: FakeDocumentRepository(),
       operationsRepo: FakeOperationsRepository(),
+      mediaRepo: FakeMediaRepository(),
+      complianceRepo: FakeComplianceRepository(),
+      reviewsRepo: FakeReviewsRepository(),
+      feedbackRepo: FakeFeedbackRepository(),
+      legalRepo: FakeLegalConsentRepository(),
     );
     addTearDown(clinicController.dispose);
     await clinicController.loadClinicData('clinic-autosave');

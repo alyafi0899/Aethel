@@ -20,6 +20,8 @@ class AuthController extends ChangeNotifier {
   ProfileModel? _profile;
   ClinicMemberModel? _membership;
   bool _unconfirmedEmailSent = false;
+  int _refreshGeneration = 0;
+  String? _profileUserId;
 
   bool get loading => _loading;
   String? get errorMessage => _errorMessage;
@@ -36,8 +38,11 @@ class AuthController extends ChangeNotifier {
           event == AuthChangeEvent.tokenRefreshed) {
         await refreshProfile();
       } else if (event == AuthChangeEvent.signedOut) {
+        _refreshGeneration++;
+        _profileUserId = null;
         _profile = null;
         _membership = null;
+        _errorMessage = null;
         _loading = false;
         notifyListeners();
       } else if (event == AuthChangeEvent.passwordRecovery) {
@@ -54,27 +59,49 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> refreshProfile() async {
+    final generation = ++_refreshGeneration;
+    final userId = _repo.currentUser?.id;
+    if (_profileUserId != userId) {
+      _profileUserId = userId;
+      _profile = null;
+      _membership = null;
+    }
     _loading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      if (_repo.currentUser != null) {
-        _profile = await _repo.fetchCurrentProfile();
-        if (_profile != null) {
-          _membership = await _repo.fetchClinicMembership(_profile!.id);
-        }
-      } else {
+      if (userId == null) {
         _profile = null;
         _membership = null;
+        return;
       }
+      final profile = await _repo.fetchCurrentProfile();
+      if (!_isCurrentRefresh(generation, userId)) return;
+      if (profile != null && profile.id != userId) {
+        throw StateError('Profil autentikasi tidak sesuai dengan sesi aktif.');
+      }
+      final membership =
+          profile == null ? null : await _repo.fetchClinicMembership(userId);
+      if (!_isCurrentRefresh(generation, userId)) return;
+      _profile = profile;
+      _membership = membership;
     } catch (e) {
-      _errorMessage = ErrorMapper.mapError(e);
+      if (_isCurrentRefresh(generation, userId)) {
+        _profile = null;
+        _membership = null;
+        _errorMessage = ErrorMapper.mapError(e);
+      }
+    } finally {
+      if (_isCurrentRefresh(generation, userId)) {
+        _loading = false;
+        notifyListeners();
+      }
     }
-
-    _loading = false;
-    notifyListeners();
   }
+
+  bool _isCurrentRefresh(int generation, String? userId) =>
+      generation == _refreshGeneration && _repo.currentUser?.id == userId;
 
   Future<bool> signUpClinic({
     required String email,
@@ -137,10 +164,15 @@ class AuthController extends ChangeNotifier {
 
   Future<void> signOut() async {
     _loading = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       await _repo.signOut();
-    } catch (_) {}
+    } catch (e) {
+      _errorMessage = ErrorMapper.mapError(e);
+    }
+    _refreshGeneration++;
+    _profileUserId = _repo.currentUser?.id;
     _profile = null;
     _membership = null;
     _loading = false;

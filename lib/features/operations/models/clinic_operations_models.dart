@@ -25,7 +25,7 @@ class ClinicOperationsInternalModel {
   final String clinicId;
   final String? clinicName;
 
-  // DIISI MANUAL pengelola (sementara)
+  // Read-only totals calculated from visits and queue tickets.
   final int totalQueues;
   final int currentQueueNumber;
   final QueueProcessStatus queueProcessStatus;

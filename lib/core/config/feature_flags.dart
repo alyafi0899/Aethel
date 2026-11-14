@@ -1,2 +1,4 @@
-const bool kShowDemoModules = false;
-const bool kShowManualOperationStats = false;
+const bool kUseMockData = bool.fromEnvironment(
+  'USE_MOCK',
+  defaultValue: false,
+);

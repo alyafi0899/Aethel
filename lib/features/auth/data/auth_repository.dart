@@ -121,7 +121,7 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<ClinicMemberModel?> fetchClinicMembership(String userId) async {
     final res = await _client
         .from('clinic_members')
-        .select()
+        .select('clinic_id,user_id,role,clinical_access,created_at')
         .eq('user_id', userId)
         .maybeSingle();
     if (res == null) return null;

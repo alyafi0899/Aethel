@@ -4,7 +4,12 @@ import 'package:clinic_operations_platform/core/theme/theme_controller.dart';
 import 'package:clinic_operations_platform/data/clinic_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/clinic_catalog_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/clinic_profile_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/compliance_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/document_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/feedback_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/legal_consent_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/media_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/reviews_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/staff_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_enums.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_model.dart';
@@ -13,12 +18,38 @@ import 'package:clinic_operations_platform/features/clinic/state/clinic_controll
 import 'package:clinic_operations_platform/features/clinic/ui/home_page.dart';
 import 'package:clinic_operations_platform/features/operations/data/operations_repository.dart';
 import 'package:clinic_operations_platform/state/app_controller.dart';
+import 'package:clinic_operations_platform/widgets/common.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  testWidgets('AppCard provides Material for interactive ListTile ink',
+      (tester) async {
+    final themeController = ThemeController(
+      kInitialThemeConfig.copyWith(useGoogleFonts: false),
+    );
+    addTearDown(themeController.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.build(themeController.config, Brightness.light),
+        home: const Scaffold(
+          body: AppCard(
+            child: ListTile(
+              title: Text('Pengaturan'),
+              onTap: _noop,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('clinic home suggestions can be hidden and persist per clinic',
       (tester) async {
     SharedPreferences.setMockInitialValues({
@@ -45,6 +76,11 @@ void main() {
       staffRepo: FakeStaffRepository(),
       documentRepo: FakeDocumentRepository(),
       operationsRepo: FakeOperationsRepository(),
+      mediaRepo: FakeMediaRepository(),
+      complianceRepo: FakeComplianceRepository(),
+      reviewsRepo: FakeReviewsRepository(),
+      feedbackRepo: FakeFeedbackRepository(),
+      legalRepo: FakeLegalConsentRepository(),
     );
     await clinicController.loadClinicData('c1');
     final themeController = ThemeController(
@@ -90,3 +126,5 @@ void main() {
     );
   });
 }
+
+void _noop() {}

@@ -2,11 +2,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/config/feature_flags.dart';
 import '../core/icons.dart';
 import '../core/responsive.dart';
 import '../core/theme/clinic_colors.dart';
 import '../core/theme/context_ext.dart';
 import '../data/models.dart';
+import '../features/auth/state/auth_controller.dart';
+import '../features/auth/ui/register_clinic_page.dart';
 import '../state/app_controller.dart';
 import '../widgets/buttons.dart';
 import '../widgets/forms.dart';
@@ -20,17 +23,14 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   UserRole _selectedRole = UserRole.admin;
-  bool _isSignUp = false;
   bool _loading = false;
   String? _errorMessage;
 
-  final _nameCtrl = TextEditingController(text: 'Dr. Sarah Jenkins');
-  final _emailCtrl = TextEditingController(text: 'admin@prometheon.health');
-  final _passCtrl = TextEditingController(text: 'password123');
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
     _emailCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
@@ -39,25 +39,16 @@ class _LoginPageState extends State<LoginPage> {
   void _onRoleChanged(UserRole role) {
     setState(() {
       _selectedRole = role;
-      if (!_isSignUp) {
-        if (role == UserRole.admin) {
-          _emailCtrl.text = 'admin@prometheon.health';
-          _nameCtrl.text = 'Elena Cruz';
-        } else {
-          _emailCtrl.text = 'nurse.park@prometheon.health';
-          _nameCtrl.text = 'Nurse Olivia Park';
-        }
-      }
     });
   }
 
   Future<void> _handleSubmit() async {
     final email = _emailCtrl.text.trim();
     final pass = _passCtrl.text.trim();
-    final name = _nameCtrl.text.trim();
 
-    if (email.isEmpty || pass.isEmpty || (_isSignUp && name.isEmpty)) {
-      setState(() => _errorMessage = 'Please fill in all required fields.');
+    if (email.isEmpty || pass.isEmpty) {
+      setState(
+          () => _errorMessage = 'Isi email dan kata sandi terlebih dahulu.');
       return;
     }
 
@@ -66,32 +57,16 @@ class _LoginPageState extends State<LoginPage> {
       _errorMessage = null;
     });
 
-    final ctrl = context.read<AppController>();
-    if (_isSignUp) {
-      final err = await ctrl.signUpWithSupabase(
-        name: name,
-        email: email,
-        password: pass,
-        role: _selectedRole,
-      );
-      if (mounted && err != null) {
-        setState(() {
-          _loading = false;
-          _errorMessage = err;
-        });
-      }
-    } else {
-      final err = await ctrl.loginWithSupabase(
-        email: email,
-        password: pass,
-        defaultRole: _selectedRole,
-      );
-      if (mounted && err != null) {
-        setState(() {
-          _loading = false;
-          _errorMessage = err;
-        });
-      }
+    final auth = context.read<AuthController>();
+    final success = await auth.signIn(email: email, password: pass);
+    if (mounted) {
+      setState(() {
+        _loading = false;
+        if (!success) {
+          _errorMessage =
+              auth.errorMessage ?? 'Tidak dapat masuk. Silakan coba lagi.';
+        }
+      });
     }
   }
 
@@ -99,8 +74,6 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final c = context.c;
     final phone = Breakpoints.isPhone(context);
-    final ctrl = context.read<AppController>();
-
     return Scaffold(
       backgroundColor: c.sidebar,
       body: Center(
@@ -130,107 +103,110 @@ class _LoginPageState extends State<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Top Branding Header
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 24,
-                    ),
-                    color: c.sidebar,
-                    child: Column(
-                      children: [
-                        const _LogoIcon(),
-                        const SizedBox(height: 14),
-                        Text(
-                          'PROMETHEON CLINIC OS',
-                          style: context.tt.titleMedium!.copyWith(
-                            color: Colors.white,
-                            letterSpacing: 1.5,
-                            fontWeight: FontWeight.bold,
+                  if (kUseMockData)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 24,
+                      ),
+                      color: c.sidebar,
+                      child: Column(
+                        children: [
+                          const _LogoIcon(),
+                          const SizedBox(height: 14),
+                          Text(
+                            'PROMETHEON CLINIC OS',
+                            style: context.tt.titleMedium!.copyWith(
+                              color: Colors.white,
+                              letterSpacing: 1.5,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Healthcare Operations & Clinical Management',
-                          style: context.sSmall.copyWith(
-                            color: const Color(0xFF7F92A7),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Administrasi dan operasional klinik',
+                            style: context.sSmall.copyWith(
+                              color: const Color(0xFF7F92A7),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
 
                   Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Select Login Role',
-                          style: context.sLabel.copyWith(
-                            letterSpacing: 1.1,
-                            fontSize: 11,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-
-                        // Role Selection Tabs (Admin vs Nurse)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _RoleTab(
-                                role: UserRole.admin,
-                                active: _selectedRole == UserRole.admin,
-                                onTap: () => _onRoleChanged(UserRole.admin),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _RoleTab(
-                                role: UserRole.nurse,
-                                active: _selectedRole == UserRole.nurse,
-                                onTap: () => _onRoleChanged(UserRole.nurse),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Role Description Badge
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: c.soft(_selectedRole.tone),
-                            borderRadius:
-                                BorderRadius.circular(context.m.radiusSm),
-                            border: Border.all(
-                              color: c
-                                  .fg(_selectedRole.tone)
-                                  .withValues(alpha: 0.3),
+                        if (kUseMockData) ...[
+                          Text(
+                            'Pilih peran demo',
+                            style: context.sLabel.copyWith(
+                              letterSpacing: 1.1,
+                              fontSize: 11,
                             ),
                           ),
-                          child: Row(
+                          const SizedBox(height: 10),
+
+                          // Role Selection Tabs (Admin vs Nurse)
+                          Row(
                             children: [
-                              Icon(
-                                _selectedRole.isAdmin
-                                    ? AppIcons.shield
-                                    : AppIcons.nurse,
-                                size: 18,
-                                color: c.fg(_selectedRole.tone),
-                              ),
-                              const SizedBox(width: 10),
                               Expanded(
-                                child: Text(
-                                  _selectedRole.description,
-                                  style: context.sSmall.copyWith(
-                                    color: c.fg(_selectedRole.tone),
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                child: _RoleTab(
+                                  role: UserRole.admin,
+                                  active: _selectedRole == UserRole.admin,
+                                  onTap: () => _onRoleChanged(UserRole.admin),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _RoleTab(
+                                  role: UserRole.nurse,
+                                  active: _selectedRole == UserRole.nurse,
+                                  onTap: () => _onRoleChanged(UserRole.nurse),
                                 ),
                               ),
                             ],
                           ),
-                        ),
+
+                          const SizedBox(height: 16),
+
+                          // Role Description Badge
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: c.soft(_selectedRole.tone),
+                              borderRadius:
+                                  BorderRadius.circular(context.m.radiusSm),
+                              border: Border.all(
+                                color: c
+                                    .fg(_selectedRole.tone)
+                                    .withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _selectedRole.isAdmin
+                                      ? AppIcons.shield
+                                      : AppIcons.nurse,
+                                  size: 18,
+                                  color: c.fg(_selectedRole.tone),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _selectedRole.description,
+                                    style: context.sSmall.copyWith(
+                                      color: c.fg(_selectedRole.tone),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
 
                         const SizedBox(height: 20),
 
@@ -247,7 +223,7 @@ class _LoginPageState extends State<LoginPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'QUICK DEMO ACCESS',
+                                'AKSES DEMO',
                                 style: context.sLabel.copyWith(
                                   fontSize: 10,
                                   letterSpacing: 1.0,
@@ -258,21 +234,23 @@ class _LoginPageState extends State<LoginPage> {
                                 children: [
                                   Expanded(
                                     child: AppButton(
-                                      'Login as Admin',
+                                      'Masuk sebagai admin',
                                       icon: AppIcons.shield,
                                       kind: BtnKind.primary,
-                                      onPressed: () =>
-                                          ctrl.loginAsRole(UserRole.admin),
+                                      onPressed: () => context
+                                          .read<AppController>()
+                                          .loginAsRole(UserRole.admin),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: AppButton(
-                                      'Login as Nurse',
+                                      'Masuk sebagai perawat',
                                       icon: AppIcons.plus,
                                       kind: BtnKind.secondary,
-                                      onPressed: () =>
-                                          ctrl.loginAsRole(UserRole.nurse),
+                                      onPressed: () => context
+                                          .read<AppController>()
+                                          .loginAsRole(UserRole.nurse),
                                     ),
                                   ),
                                 ],
@@ -289,7 +267,7 @@ class _LoginPageState extends State<LoginPage> {
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 10),
                               child: Text(
-                                'OR SUPABASE AUTH',
+                                'ATAU MASUK DENGAN SUPABASE',
                                 style: context.sSmall.copyWith(fontSize: 10),
                               ),
                             ),
@@ -325,28 +303,17 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ],
 
-                        if (_isSignUp) ...[
-                          FormField2(
-                            'Full Name',
-                            child: AppTextField(
-                              controller: _nameCtrl,
-                              hint: 'e.g. Dr. Sarah Jenkins',
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-
                         FormField2(
-                          'Email Address',
+                          'Email Klinik / Pengelola',
                           child: AppTextField(
                             controller: _emailCtrl,
-                            hint: 'name@prometheon.health',
+                            hint: 'nama@klinik.id',
                           ),
                         ),
                         const SizedBox(height: 12),
 
                         FormField2(
-                          'Password',
+                          'Kata Sandi',
                           child: AppTextField(
                             controller: _passCtrl,
                             obscureText: true,
@@ -358,11 +325,7 @@ class _LoginPageState extends State<LoginPage> {
                         SizedBox(
                           width: double.infinity,
                           child: AppButton(
-                            _loading
-                                ? 'Authenticating...'
-                                : (_isSignUp
-                                    ? 'Create ${_selectedRole.label} Account'
-                                    : 'Sign In as ${_selectedRole.label}'),
+                            _loading ? 'Memeriksa...' : 'Masuk Sekarang',
                             kind: BtnKind.primary,
                             onPressed: _loading ? null : _handleSubmit,
                           ),
@@ -372,16 +335,13 @@ class _LoginPageState extends State<LoginPage> {
 
                         Center(
                           child: TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _isSignUp = !_isSignUp;
-                                _errorMessage = null;
-                              });
-                            },
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const RegisterClinicPage(),
+                              ),
+                            ),
                             child: Text(
-                              _isSignUp
-                                  ? 'Already have an account? Sign In'
-                                  : 'Need a new account? Register with Supabase',
+                              'Belum memiliki akun? Daftarkan klinik',
                               style: context.sSmall.copyWith(
                                 color: c.primary,
                                 fontWeight: FontWeight.w600,

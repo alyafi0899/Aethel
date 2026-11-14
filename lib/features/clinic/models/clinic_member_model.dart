@@ -5,12 +5,14 @@ class ClinicMemberModel {
     required this.clinicId,
     required this.userId,
     this.role = ClinicRole.admin,
+    this.clinicalAccess = false,
     this.createdAt,
   });
 
   final String clinicId;
   final String userId;
   final ClinicRole role;
+  final bool clinicalAccess;
   final DateTime? createdAt;
 
   factory ClinicMemberModel.fromJson(Map<String, dynamic> json) {
@@ -18,6 +20,7 @@ class ClinicMemberModel {
       clinicId: json['clinic_id'] as String,
       userId: json['user_id'] as String,
       role: ClinicRole.fromDb(json['role'] as String?),
+      clinicalAccess: json['clinical_access'] == true,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
@@ -29,6 +32,7 @@ class ClinicMemberModel {
       'clinic_id': clinicId,
       'user_id': userId,
       'role': role.dbValue,
+      'clinical_access': clinicalAccess,
     };
   }
 }

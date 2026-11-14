@@ -30,16 +30,17 @@ class SupabaseOperationsRepository implements OperationsRepository {
 
   @override
   Future<ClinicOperationsInternalModel> updateInternalOperations(
-      ClinicOperationsInternalModel ops) async {
-    final payload = ops.toJson();
-    final res = await _client
-        .from('clinic_operations_internal')
-        .update(payload)
-        .eq('clinic_id', ops.clinicId)
-        .select()
-        .single();
-    return ClinicOperationsInternalModel.fromJson(res);
-  }
+          ClinicOperationsInternalModel ops) async =>
+      ClinicOperationsInternalModel.fromJson(
+        await _client.rpc(
+          'update_clinic_operational_status',
+          params: {
+            'p_clinic_id': ops.clinicId,
+            'p_facility_status': ops.facilityStatus.dbValue,
+            'p_queue_process_status': ops.queueProcessStatus.dbValue,
+          },
+        ) as Map<String, dynamic>,
+      );
 
   @override
   Future<ClinicOperationsPublicModel> fetchPublicPreview(
@@ -61,6 +62,7 @@ class SupabaseOperationsRepository implements OperationsRepository {
 }
 
 class FakeOperationsRepository implements OperationsRepository {
+  int updateCount = 0;
   ClinicOperationsInternalModel internalOps =
       const ClinicOperationsInternalModel(
     clinicId: 'c1',
@@ -75,6 +77,7 @@ class FakeOperationsRepository implements OperationsRepository {
   @override
   Future<ClinicOperationsInternalModel> updateInternalOperations(
       ClinicOperationsInternalModel ops) async {
+    updateCount++;
     internalOps = ops;
     return ops;
   }

@@ -1,11 +1,13 @@
 import 'package:clinic_operations_platform/data/clinic_repository.dart';
 import 'package:clinic_operations_platform/data/models.dart';
+import 'package:clinic_operations_platform/data/repositories/appointments_repository.dart';
 import 'package:clinic_operations_platform/data/supabase_clinic_repository.dart';
 import 'package:clinic_operations_platform/state/app_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
-  group('AppController Authentication & Role Tests', () {
+  group('AppController navigation and session defaults', () {
     late AppController controller;
 
     setUp(() async {
@@ -13,60 +15,59 @@ void main() {
       await controller.load();
     });
 
-    test('Initial auth state defaults to logged in Admin', () {
-      expect(controller.isLoggedIn, isTrue);
-      expect(controller.currentRole, equals(UserRole.admin));
-      expect(controller.activeUserName, equals('Elena Cruz'));
-      expect(controller.activeUserRole, equals('Clinic Administrator'));
-    });
+    tearDown(() => controller.dispose());
 
-    test('Login as Nurse keeps the focused clinic navigation', () {
-      controller.loginAsRole(UserRole.nurse);
-
-      expect(controller.isLoggedIn, isTrue);
-      expect(controller.currentRole, equals(UserRole.nurse));
-      expect(controller.activeUserName, equals('Nurse Olivia Park'));
-      expect(controller.activeUserRole, equals('Charge Nurse'));
-
-      final pages = controller.navSections.expand((s) => s.pages).toList();
-      expect(pages, [
-        AppPage.dashboard,
-        AppPage.clinicOperationsInternal,
-        AppPage.clinicStaff,
-        AppPage.clinicReviews,
-        AppPage.clinicProfile,
-        AppPage.settings,
-      ]);
-    });
-
-    test('Login as Admin keeps the focused clinic navigation', () {
-      controller.loginAsRole(UserRole.nurse);
-      controller.loginAsRole(UserRole.admin);
-
-      expect(controller.currentRole, equals(UserRole.admin));
-      final pages = controller.navSections.expand((s) => s.pages).toList();
-      expect(pages, hasLength(6));
-      expect(pages.toSet(), hasLength(6));
-    });
-
-    test('Logout clears session state', () async {
-      await controller.logout();
+    test('starts unauthenticated and restores all eight navigation groups', () {
       expect(controller.isLoggedIn, isFalse);
       expect(controller.currentUserProfile, isNull);
+      expect(controller.navSections, hasLength(8));
+
+      final pages = controller.navSections.expand((section) => section.pages);
+      expect(pages, contains(AppPage.workflow));
+      expect(pages, contains(AppPage.appointments));
+      expect(pages, contains(AppPage.billing));
+      expect(pages.toSet(), hasLength(pages.length));
+    });
+
+    test('navigation does not redirect an enabled workflow module', () {
+      controller.go(AppPage.appointments);
+      expect(controller.page, AppPage.appointments);
+    });
+
+    test('simulated role login is unavailable without explicit mock mode', () {
+      expect(
+        () => controller.loginAsRole(UserRole.nurse),
+        throwsA(isA<StateError>()),
+      );
+      expect(controller.isLoggedIn, isFalse);
     });
   });
 
-  group('SupabaseClinicRepository Tests', () {
-    test('SupabaseClinicRepository loads snapshot baseline without crashing',
-        () async {
-      final repo = SupabaseClinicRepository();
-      final data = await repo.load();
+  test('live repository does not replace missing auth with mock data',
+      () async {
+    final client = SupabaseClient('https://example.supabase.co', 'test-key');
+    final repository = SupabaseClinicRepository(client: client);
 
-      expect(data.facilityName, isNotEmpty);
-      expect(data.appointments, isNotEmpty);
-      expect(data.screenings, isNotEmpty);
-      expect(data.doctors, isNotEmpty);
-      expect(data.patients, isNotEmpty);
-    });
+    await expectLater(
+      repository.load(),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'Sesi pengguna belum tersedia.',
+        ),
+      ),
+    );
+    await client.dispose();
+  });
+
+  test('legacy appointment repository fails explicitly instead of fallback',
+      () {
+    final repository = SupabaseAppointmentsRepository();
+
+    expect(
+      repository.fetchAppointments(),
+      throwsA(isA<UnsupportedError>()),
+    );
   });
 }

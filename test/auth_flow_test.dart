@@ -1,5 +1,8 @@
 import 'package:clinic_operations_platform/core/theme/app_theme.dart';
 import 'package:clinic_operations_platform/core/theme/theme_controller.dart';
+import 'package:clinic_operations_platform/data/clinic_repository.dart';
+import 'package:clinic_operations_platform/data/models.dart';
+import 'package:clinic_operations_platform/state/app_controller.dart';
 import 'package:clinic_operations_platform/features/auth/data/auth_repository.dart';
 import 'package:clinic_operations_platform/features/auth/state/auth_controller.dart';
 import 'package:clinic_operations_platform/features/auth/ui/auth_gate.dart';
@@ -8,7 +11,12 @@ import 'package:clinic_operations_platform/features/auth/ui/pending_verification
 import 'package:clinic_operations_platform/features/auth/ui/register_clinic_page.dart';
 import 'package:clinic_operations_platform/features/clinic/data/clinic_catalog_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/clinic_profile_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/compliance_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/document_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/feedback_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/legal_consent_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/media_repository.dart';
+import 'package:clinic_operations_platform/features/clinic/data/reviews_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/data/staff_repository.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_enums.dart';
 import 'package:clinic_operations_platform/features/clinic/models/clinic_document_model.dart';
@@ -24,6 +32,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+class _ImmediateClinicRepository implements ClinicRepository {
+  @override
+  Future<ClinicData> load() async => ClinicData.empty(
+        facilityName: 'Klinik Uji',
+        userName: 'Pengguna Uji',
+        userInitials: 'PU',
+        userRole: 'owner',
+      );
+}
+
 Widget createTestApp(Widget child,
     {AuthController? authCtrl, ClinicController? clinicCtrl}) {
   final fakeAuth = authCtrl ?? AuthController(repository: FakeAuthRepository());
@@ -34,12 +52,20 @@ Widget createTestApp(Widget child,
         staffRepo: FakeStaffRepository(),
         documentRepo: FakeDocumentRepository(),
         operationsRepo: FakeOperationsRepository(),
+        mediaRepo: FakeMediaRepository(),
+        complianceRepo: FakeComplianceRepository(),
+        reviewsRepo: FakeReviewsRepository(),
+        feedbackRepo: FakeFeedbackRepository(),
+        legalRepo: FakeLegalConsentRepository(),
       );
   final themeCtrl = ThemeController();
 
   return MultiProvider(
     providers: [
       ChangeNotifierProvider.value(value: themeCtrl),
+      ChangeNotifierProvider(
+        create: (_) => AppController(_ImmediateClinicRepository()),
+      ),
       ChangeNotifierProvider.value(value: fakeAuth),
       ChangeNotifierProvider.value(value: fakeClinic),
     ],
@@ -179,6 +205,36 @@ void main() {
       expect(find.text('Keluar Akun'), findsOneWidget);
     });
 
+    testWidgets('AuthGate blocks clinic routing when profile is missing',
+        (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final fakeAuthRepo = FakeAuthRepository();
+      final user = User(
+        id: 'u1',
+        appMetadata: {},
+        userMetadata: {'account_type': 'clinic'},
+        aud: 'authenticated',
+        createdAt: DateTime.now().toIso8601String(),
+      );
+      fakeAuthRepo.setMockState(
+        user: user,
+        session: Session(accessToken: 'token', tokenType: 'bearer', user: user),
+      );
+      final authCtrl = AuthController(repository: fakeAuthRepo);
+      await authCtrl.initSession();
+
+      await tester
+          .pumpWidget(createTestApp(const AuthGate(), authCtrl: authCtrl));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Profil akun belum dapat dimuat'), findsOneWidget);
+      expect(find.text('Coba Lagi'), findsOneWidget);
+      expect(find.text('Masuk Sekarang'), findsNothing);
+    });
+
     testWidgets('AuthGate routes draft clinic to OnboardingWizardPage',
         (tester) async {
       tester.view.physicalSize = const Size(1400, 900);
@@ -225,6 +281,11 @@ void main() {
         staffRepo: FakeStaffRepository(),
         documentRepo: FakeDocumentRepository(),
         operationsRepo: FakeOperationsRepository(),
+        mediaRepo: FakeMediaRepository(),
+        complianceRepo: FakeComplianceRepository(),
+        reviewsRepo: FakeReviewsRepository(),
+        feedbackRepo: FakeFeedbackRepository(),
+        legalRepo: FakeLegalConsentRepository(),
       );
 
       await tester.pumpWidget(
@@ -283,6 +344,11 @@ void main() {
         staffRepo: FakeStaffRepository(),
         documentRepo: FakeDocumentRepository(),
         operationsRepo: FakeOperationsRepository(),
+        mediaRepo: FakeMediaRepository(),
+        complianceRepo: FakeComplianceRepository(),
+        reviewsRepo: FakeReviewsRepository(),
+        feedbackRepo: FakeFeedbackRepository(),
+        legalRepo: FakeLegalConsentRepository(),
       );
 
       await tester.pumpWidget(
@@ -341,6 +407,11 @@ void main() {
         staffRepo: FakeStaffRepository(),
         documentRepo: FakeDocumentRepository(),
         operationsRepo: FakeOperationsRepository(),
+        mediaRepo: FakeMediaRepository(),
+        complianceRepo: FakeComplianceRepository(),
+        reviewsRepo: FakeReviewsRepository(),
+        feedbackRepo: FakeFeedbackRepository(),
+        legalRepo: FakeLegalConsentRepository(),
       );
 
       await tester.pumpWidget(
